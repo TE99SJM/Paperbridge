@@ -625,9 +625,17 @@ app.addEventListener("change", async ev => {
       el.closest(".answer").classList.toggle("approved", el.checked); updateReviewCounts(); return;
     }
     if (el.id === "api-provider") {
-      vault.settings.provider = el.value; vault.settings.apiBase = PROVIDERS[el.value].base;
-      vault.settings.apiKey = ""; vault.settings.model = ""; modelChoices = [];
-      await persist(); render(); return;
+      // Clear the visible secret immediately, before any asynchronous persistence.
+      const keyInput = document.getElementById("api-key");
+      if (keyInput) keyInput.value = "";
+      vault.settings.provider = el.value;
+      vault.settings.apiBase = PROVIDERS[el.value].base;
+      vault.settings.apiKey = "";
+      vault.settings.model = "";
+      modelChoices = [];
+      await persist();
+      render();
+      return;
     }
     if (el.id === "active-account") {
       await task(async () => { helperInfo = await helper("/account/select", { id: el.value }); vault.settings.chatgptModel = ""; await refreshAccount(); await persist(); }, "Switching account…"); return;
