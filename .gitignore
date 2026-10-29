@@ -1,0 +1,17 @@
+node_modules/
+release/
+preview/
+qa/
+extension/*.js
+extension/*.mjs
+extension/assets/
+extension/cmaps/
+extension/standard_fonts/
+extension/THIRD_PARTY_NOTICES.txt
+helper/paperbridge-helper.mjs
+helper/THIRD_PARTY_NOTICES.txt
+examples/react-practice.js
+*.log
+.DS_Store
+.env*
+credentials*

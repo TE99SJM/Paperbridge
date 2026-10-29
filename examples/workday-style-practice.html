@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Paperbridge Workday-style practice</title>
+  <style>
+    *{box-sizing:border-box}body{max-width:820px;margin:40px auto;padding:0 24px;font:16px/1.6 system-ui;color:#263b30;background:#f7f7f0}fieldset,section.entry{border:1px solid #bec8b5;border-radius:8px;margin:20px 0;padding:20px}legend,h2{font-weight:650}label{display:block;margin:12px 0 6px}input:not([type=checkbox]):not([type=radio]),select,textarea,button[aria-haspopup]{display:block;padding:10px;width:100%;font:inherit;border:1px solid #a2b79b;border-radius:5px;background:white;text-align:left}button{padding:12px 18px;background:#315f4d;color:white;border:0;border-radius:6px;font:inherit}button[aria-haspopup]{color:#263b30;cursor:pointer}.note{padding:16px;background:#e7efdd;border-radius:8px}.date-group{display:grid;grid-template-columns:1fr 1fr;gap:16px}[role=listbox]{background:white;border:2px solid #315f4d;border-radius:6px;box-shadow:0 8px 30px #213b3422;max-height:250px;overflow:auto;z-index:10;min-width:220px}[role=option]{padding:10px;cursor:pointer}[role=option]:hover{background:#e7efdd}.dropdown-portal{position:fixed;left:30px;bottom:30px}#decoy-listbox{margin:20px 0;color:#6a736e;max-width:300px}#events{white-space:pre-wrap;font:12px monospace}a{color:#315f4d}
+  </style>
+</head>
+<body>
+  <h1>Application questions and history</h1>
+  <p class="note">Fictional practice page, not a Workday product or a live employer application. It simulates common control patterns and never sends form data. Use only made-up information.</p>
+  <p><a href="practice-application.html">Native-input practice</a> · <a href="react-practice.html">Controlled React practice</a></p>
+  <p aria-current="step">My Experience / Application Questions</p>
+  <form id="workday-practice" data-automation-id="myExperiencePage">
+    <fieldset data-automation-id="formField-age">
+      <legend>Are you 18 years of age or older?</legend>
+      <button id="age-choice" type="button" aria-haspopup="listbox" aria-expanded="false" aria-controls="age-menu" data-choices="Select One|Yes|No">Select One</button>
+    </fieldset>
+    <fieldset data-automation-id="formField-authorization">
+      <legend>Are you legally authorized to work in the United States?</legend>
+      <button id="authorization-choice" type="button" aria-haspopup="listbox" aria-expanded="false" data-choices="Select One|Yes|No" data-inner-option="true">Select One</button>
+    </fieldset>
+    <fieldset data-automation-id="formField-sponsorship">
+      <legend>Do you now have or will you in the future require sponsorship for authorization to work in the United States?</legend>
+      <select id="sponsorship-choice"><option value="">Select One</option><option value="yes">Yes</option><option value="no">No</option></select>
+    </fieldset>
+    <fieldset data-automation-id="formField-previous">
+      <legend>Have you previously worked for Fictional Workshop?</legend>
+      <button id="previous-choice" type="button" aria-haspopup="listbox" aria-expanded="false" aria-controls="previous-menu" data-choices="Select One|Yes|No">Select One</button>
+    </fieldset>
+    <section class="entry" data-automation-id="workExperience-1">
+      <h2>Work experience</h2>
+      <label for="job1-employer">Employer</label><input id="job1-employer" name="employer1">
+      <label for="job1-title">Job title</label><input id="job1-title" name="title1">
+      <div data-automation-id="formField-startDate"><label>From</label><div class="date-group"><input id="job1-from-month" data-automation-id="dateSectionMonth-input" aria-label="Month" type="number" min="1" max="12"><input id="job1-from-year" data-automation-id="dateSectionYear-input" aria-label="Year" type="number" min="1900" max="2100"></div></div>
+      <div data-automation-id="formField-endDate" id="job1-end"><label>To</label><div class="date-group"><input id="job1-to-month" data-automation-id="dateSectionMonth-input" aria-label="Month" type="number" min="1" max="12"><input id="job1-to-year" data-automation-id="dateSectionYear-input" aria-label="Year" type="number" min="1900" max="2100"></div></div>
+      <label><input type="checkbox" id="job1-current">I currently work here</label>
+      <fieldset><legend>May we contact this employer?</legend><label><input type="radio" name="contact1" value="yes">Yes</label><label><input type="radio" name="contact1" value="no">No</label></fieldset>
+      <label for="job1-leaving">Reason for leaving</label><textarea id="job1-leaving" maxlength="500"></textarea>
+    </section>
+    <section class="entry" data-automation-id="workExperience-2">
+      <h2>Work experience</h2>
+      <label for="job2-employer">Employer</label><input id="job2-employer" name="employer2">
+      <label for="job2-title">Job title</label><input id="job2-title" name="title2">
+      <div data-automation-id="formField-startDate"><label>From</label><div class="date-group"><input id="job2-from-month" data-automation-id="dateSectionMonth-input" aria-label="Month" type="number" min="1" max="12"><input id="job2-from-year" data-automation-id="dateSectionYear-input" aria-label="Year" type="number" min="1900" max="2100"></div></div>
+      <fieldset><legend>May we contact this employer?</legend><label><input type="radio" name="contact2" value="yes">Yes</label><label><input type="radio" name="contact2" value="no">No</label></fieldset>
+    </section>
+    <section class="entry" data-automation-id="education-1">
+      <h2>Education</h2>
+      <label for="school1">School or university</label><input id="school1" name="school1">
+      <div data-automation-id="formField-degree"><label id="degree-label" for="degree-choice">Degree</label><button id="degree-choice" type="button" aria-haspopup="listbox" aria-labelledby="degree-label" aria-expanded="false" aria-controls="degree-menu" data-choices="Select One|Associate of Applied Science|Bachelor of Science">Select One</button></div>
+      <label for="graduate1">Graduation year</label><input id="graduate1" type="number" min="1900" max="2100">
+      <div data-automation-id="multiselectInputContainer"><label for="major-search">Field of study (search)</label><input id="major-search" role="combobox" aria-haspopup="listbox" aria-expanded="false"></div>
+    </section>
+    <section class="entry" data-automation-id="education-2">
+      <h2>Education</h2>
+      <label for="school2">School or university</label><input id="school2" name="school2">
+      <label for="graduate2">Graduation year</label><input id="graduate2" type="number" min="1900" max="2100">
+    </section>
+    <fieldset><legend>Manual declarations</legend>
+      <label for="signature">Electronic signature</label><input id="signature">
+      <label><input id="certify" type="checkbox">I certify that this application is accurate</label>
+      <label for="upload-resume">Upload resume</label><input id="upload-resume" type="file">
+    </fieldset>
+    <div class="actions"><button id="add-entry" type="button">Add another</button> <button id="next-step" type="button">Save and Continue</button> <button id="submit-application" type="submit">Submit</button></div>
+  </form>
+  <div id="decoy-listbox" role="listbox" aria-label="Unrelated menu"><div role="option">Yes</div><div role="option">No</div></div>
+  <h2>Local activity</h2><pre id="events">No application actions taken.</pre>
+  <script src="workday-style-practice.js"></script>
+</body>
+</html>

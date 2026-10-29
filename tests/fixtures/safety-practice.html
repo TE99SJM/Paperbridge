@@ -1,0 +1,17 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>Paperbridge safety fixture</title><style>body{max-width:700px;margin:30px auto;font:16px system-ui}label,button,iframe{display:block;margin:15px 0}input,button{padding:10px}[role=listbox]{padding:10px;border:1px solid black}[role=option]{padding:10px}iframe{width:500px;height:110px}</style></head>
+<body><h1>Fictional safety fixture</h1>
+<form id="safety-form">
+  <label>Visible note<input id="visible-note"></label>
+  <label>Locked note<input id="locked-note" readonly value="Keep locked"></label>
+  <div hidden><label>Hidden note<input id="hidden-note" value="Keep hidden"></label></div>
+  <label>Ambiguous native choice<select id="duplicate"><option value="">Choose</option><option value="same">One</option><option value="same">Two</option></select></label>
+  <fieldset data-automation-id="formField-category"><legend>Category</legend><button id="category" type="button" aria-haspopup="listbox" aria-controls="category-list" aria-expanded="false">Select One</button></fieldset>
+  <button id="unsafe-submit" type="submit" aria-haspopup="listbox">Choose action</button>
+</form>
+<iframe id="same-frame" title="Same-origin fixture" srcdoc="<label>Frame note<input id='frame-note'></label>"></iframe>
+<iframe id="isolated-frame" title="Protected fixture" sandbox srcdoc="<label>Protected note<input id='protected-note'></label>"></iframe>
+<div id="shadow-host"></div>
+<pre id="actions">0</pre>
+<script src="safety-practice.js"></script>
+</body></html>

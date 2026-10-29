@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Paperbridge practice application</title>
+<style>body{max-width:760px;margin:45px auto;padding:0 22px;font:16px/1.6 system-ui;color:#263b30;background:#f7f7f0}h1{line-height:1.1}fieldset{border:1px solid #bec8b5;border-radius:10px;margin:20px 0;padding:22px}legend{font-weight:650}label{display:block;margin:12px 0 6px}input:not([type=checkbox]):not([type=radio]),select,textarea{display:block;padding:10px;width:100%;max-width:570px;font:inherit;box-sizing:border-box;border:1px solid #b6c3af;border-radius:5px}button{padding:12px 20px;background:#315f4d;color:white;border:0;border-radius:7px;font:inherit}small{color:#64775d}.note{padding:16px;background:#e7efdd;border-radius:8px}#events{font:12px monospace;white-space:pre-wrap}</style></head>
+<body><h1>A safe place to practice.</h1><p class="note">This fictional application never sends data anywhere. Use only fictional information here. Start the included practice server, open this page in Opera GX, and click Paperbridge.</p>
+<form id="practice-form">
+<fieldset><legend>Contact details</legend>
+<label for="fullName">Full name</label><input id="fullName" name="fullName" autocomplete="name" required>
+<label for="email">Email address</label><input id="email" name="email" type="email" autocomplete="email" required>
+<label for="phone">Phone number</label><input id="phone" name="phone" type="tel" autocomplete="tel">
+<label for="city">City and state</label><input id="city" name="city" value="Keep this existing answer">
+</fieldset>
+<fieldset><legend>Your application</legend>
+<label for="position">Position of interest</label><select id="position" name="position"><option value="">Choose…</option><option value="operations">Operations Coordinator</option><option value="sales">Sales Associate</option></select>
+<label for="experience">Describe your relevant experience</label><textarea id="experience" name="experience" maxlength="2000" rows="5"></textarea>
+<label for="salary">Desired annual salary</label><input id="salary" name="salary" type="number" min="0" step="1000">
+<label for="startDate">Preferred start date</label><input id="startDate" name="startDate" type="date">
+</fieldset>
+<fieldset><legend>Availability</legend><label><input type="radio" name="availability" value="full">Full time</label><label><input type="radio" name="availability" value="part">Part time</label></fieldset>
+<fieldset><legend>Schedule preference</legend><label><input type="checkbox" id="remote" name="remote">Remote work preferred</label></fieldset>
+<fieldset><legend>Complete these manually</legend>
+<label for="ssn">Social Security number</label><input id="ssn" name="ssn" placeholder="Do not enter real information">
+<label for="password">Account password</label><input id="password" type="password" autocomplete="new-password">
+<label for="resume">Resume attachment</label><input id="resume" type="file">
+<label for="signature">Signature</label><input id="signature">
+<label><input type="checkbox" id="consent">I certify this application is accurate</label>
+</fieldset>
+<input name="invisible-trap" type="hidden" value="Not scanned">
+<button type="submit">Practice submit (no network)</button></form>
+<h2>Page activity</h2><p><small>This log shows local change events only. Paperbridge should never click the submit button.</small></p><pre id="events">No changes yet.</pre>
+<script src="practice.js"></script></body></html>

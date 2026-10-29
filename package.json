@@ -1,0 +1,51 @@
+{
+  "name": "paperbridge-gx",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Review-first AI form filling for Opera GX and Chromium, using your existing AI chat and answers you approve.",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/TE99SJM/Paperbridge.git"
+  },
+  "homepage": "https://github.com/TE99SJM/Paperbridge#readme",
+  "bugs": {
+    "url": "https://github.com/TE99SJM/Paperbridge/issues"
+  },
+  "keywords": [
+    "opera-gx",
+    "browser-extension",
+    "manifest-v3",
+    "form-filling",
+    "job-applications"
+  ],
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "test": "node --test tests/*.test.mjs",
+    "test:browser": "node tests/browser.mjs",
+    "package": "node scripts/package.mjs",
+    "package:local": "node scripts/package-local.mjs",
+    "verify:release": "node scripts/verify-release.mjs",
+    "verify:local": "node scripts/verify-release.mjs --local",
+    "helper": "node helper/paperbridge-helper.mjs"
+  },
+  "dependencies": {
+    "@fontsource-variable/geist": "5.3.0",
+    "jose": "6.2.14",
+    "lucide": "1.64.0",
+    "mammoth": "1.13.0",
+    "pdfjs-dist": "4.10.38"
+  },
+  "devDependencies": {
+    "esbuild": "0.28.2",
+    "jszip": "3.10.2",
+    "playwright": "1.58.2",
+    "react": "19.3.1",
+    "react-dom": "19.3.1",
+    "sharp": "0.35.5"
+  },
+  "engines": {
+    "node": ">=20.19.0"
+  },
+  "license": "MIT"
+}
