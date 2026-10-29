@@ -1,0 +1,93 @@
+name: Publish verified release
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing stable version tag, matching an empty draft release
+        required: true
+        type: string
+        default: v1.0.0
+      build_run_id:
+        description: Successful Build and test run ID for the exact tagged commit
+        required: true
+        type: string
+
+permissions:
+  actions: read
+  contents: write
+
+concurrency:
+  group: publish-${{ inputs.tag }}
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    name: Publish and verify release downloads
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    defaults:
+      run:
+        shell: bash
+    env:
+      GH_TOKEN: ${{ github.token }}
+      RELEASE_TAG: ${{ inputs.tag }}
+      BUILD_RUN_ID: ${{ inputs.build_run_id }}
+    steps:
+      - name: Check out the tagged source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.tag }}
+          persist-credentials: false
+
+      - name: Require a matching successful build and empty draft
+        run: |
+          [[ "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]
+          [[ "$BUILD_RUN_ID" =~ ^[0-9]+$ ]]
+          test "$RELEASE_TAG" = "v$(node -p "require('./package.json').version")"
+          build="$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$BUILD_RUN_ID")"
+          jq -e --arg sha "$(git rev-parse HEAD)" '
+            .head_sha == $sha
+            and .head_branch == "main"
+            and .event == "push"
+            and .status == "completed"
+            and .conclusion == "success"
+            and .path == ".github/workflows/ci.yml"
+          ' <<< "$build"
+          draft="$(gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --json isDraft,assets)"
+          jq -e '.isDraft == true and (.assets | length) == 0' <<< "$draft"
+
+      - name: Download only that verified build
+        run: |
+          gh run download "$BUILD_RUN_ID" --repo "$GITHUB_REPOSITORY" \
+            --name paperbridge-verified-downloads --dir release
+          cd release
+          test -f "Paperbridge-Local-Install-$RELEASE_TAG.zip"
+          test -f "Paperbridge-Opera-GX-$RELEASE_TAG.zip"
+          sha256sum --check "Paperbridge-Local-Install-$RELEASE_TAG.zip.sha256"
+          sha256sum --check "Paperbridge-Opera-GX-$RELEASE_TAG.zip.sha256"
+
+      - name: Upload verified archives and publish the draft
+        run: |
+          gh release upload "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" \
+            "release/Paperbridge-Local-Install-$RELEASE_TAG.zip" \
+            "release/Paperbridge-Local-Install-$RELEASE_TAG.zip.sha256" \
+            "release/Paperbridge-Opera-GX-$RELEASE_TAG.zip" \
+            "release/Paperbridge-Opera-GX-$RELEASE_TAG.zip.sha256"
+          gh release edit "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" \
+            --verify-tag --draft=false --latest \
+            --title "Paperbridge $RELEASE_TAG" --notes-file RELEASE_NOTES.md
+
+      - name: Download the published assets and verify the round trip
+        run: |
+          gh release download "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" \
+            --pattern '*.zip' --pattern '*.sha256' --dir downloaded
+          (
+            cd downloaded
+            sha256sum --check "Paperbridge-Local-Install-$RELEASE_TAG.zip.sha256"
+            sha256sum --check "Paperbridge-Opera-GX-$RELEASE_TAG.zip.sha256"
+          )
+          for file in release/*.zip release/*.sha256; do
+            cmp "$file" "downloaded/$(basename "$file")"
+          done
