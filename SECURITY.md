@@ -10,7 +10,7 @@ Paperbridge is review-first automation, not a security boundary against a malici
 | `scripting` | Inject the local scanner/filler into that selected tab's isolated world. |
 | `storage` | Store the encrypted vault and temporary target metadata. |
 | `clipboardWrite` | Copy a prompt after explicit confirmation. |
-| Optional HTTPS/loopback hosts | Reach a provider endpoint or local helper only after you request and allow that host. |
+| Optional HTTPS/loopback hosts | Reach a provider endpoint/local helper, or access the explicitly selected ChatGPT tab after you allow that host. |
 
 The release has no always-on `host_permissions`, no permanent content script, no `externally_connectable` interface, and no cookies/history permissions. Optional host patterns are broad enough to support user-selected providers, but actual requests are host-scoped and need approval; Chromium host grants are not port-scoped.
 
@@ -18,7 +18,8 @@ The workspace uses bundled local scripts and fonts with `script-src 'self'`. AI 
 
 ## Fill safeguards
 
-- **Review boundary:** All model and saved answers begin unapproved. Editing revokes approval, and filling requires a separate target-site/autosave confirmation.
+- **Automatic bridge:** Starting a run authorizes sending its form/background to the chosen ChatGPT conversation and filling supported empty fields without per-answer approval. Replies must match the current scan and pass normal field validation. Chat-context quotations remain unverified locally. Missing or unsupported answers are skipped.
+- **Manual review boundary:** All model and saved answers begin unapproved. Editing revokes approval, and filling requires a separate target-site/autosave confirmation.
 - **Field identity:** A fill checks the scan ID, document URL, original element identity, labels, type, section, constraints, supported options, and whether the field changed since scanning.
 - **No silent overwrites:** Existing values are skipped by default. The optional overwrite switch only applies to values present at scan time; post-scan edits are still preserved.
 - **Sensitive questions:** Detected sensitive fields remain manual. Supported eligibility and employer-contact answers require user-originated values and explicit confirmation rather than AI inference.

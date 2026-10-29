@@ -5,28 +5,64 @@ async function privateStorage() {
 chrome.runtime.onInstalled.addListener(() => privateStorage().catch(() => {}));
 chrome.runtime.onStartup.addListener(() => privateStorage().catch(() => {}));
 
+async function setTarget(tab) {
+  if (!tab?.id || !/^https?:\/\//.test(tab.url || "")) {
+    await chrome.storage.session.set({ target: null });
+    return;
+  }
+  await chrome.storage.session.set({
+    target: { tabId: tab.id, origin: new URL(tab.url).origin, title: tab.title || "" }
+  });
+}
+
 let opening = false;
 chrome.action.onClicked.addListener(async tab => {
   if (opening) return;
   opening = true;
   try {
+    // Invoke Chromium's side-panel API directly during the toolbar click gesture.
+    // Opera GX uses its manifest sidebar_action button instead.
+    const isWebPage = !!tab?.id && /^https?:\/\//.test(tab.url || "");
+    const panelPromise = !globalThis.opr?.sidebarAction && chrome.sidePanel?.open && isWebPage
+      ? chrome.sidePanel.open({ tabId: tab.id })
+      : null;
+
     await privateStorage();
-    if (!tab.id || !/^https?:\/\//.test(tab.url || "")) {
-      // A workspace can still be opened to manage documents on restricted pages.
-      await chrome.storage.session.set({ target: null });
-    } else await chrome.storage.session.set({ target: { tabId: tab.id, origin: new URL(tab.url).origin, title: tab.title || "" } });
-    const { workspaceWindowId } = await chrome.storage.session.get("workspaceWindowId");
-    if (Number.isInteger(workspaceWindowId)) {
-      try {
-        await chrome.windows.update(workspaceWindowId, { focused: true });
-        await chrome.runtime.sendMessage({ type: "paperbridge-target-changed" }).catch(() => {});
-        return;
-      } catch { /* Closed workspace: create a fresh window. */ }
+    await setTarget(tab);
+    await chrome.runtime.sendMessage({ type: "paperbridge-target-changed" }).catch(() => {});
+
+    if (globalThis.opr?.sidebarAction) {
+      // Do not create a detached window in Opera. The user opens Paperbridge
+      // from Opera's sidebar button configured by sidebar_action in manifest.json.
+      return;
     }
-    const win = await chrome.windows.create({
-      url: chrome.runtime.getURL("index.html"), type: "popup",
-      width: 1080, height: 840, focused: true
-    });
-    await chrome.storage.session.set({ workspaceWindowId: win.id });
-  } finally { opening = false; }
+    if (panelPromise) {
+      await panelPromise;
+      return;
+    }
+
+    // Browsers without a sidebar API keep the action non-disruptive: no surprise
+    // popup window. The extension page remains available from the extension menu.
+  } catch (err) {
+    console.error("Paperbridge could not open its browser side panel.", err);
+  } finally {
+    opening = false;
+  }
+});
+
+// Keep the active application target current while the sidebar remains open.
+chrome.tabs.onActivated.addListener(async ({ tabId }) => {
+  try {
+    await setTarget(await chrome.tabs.get(tabId));
+    await chrome.runtime.sendMessage({ type: "paperbridge-target-changed" }).catch(() => {});
+  } catch { /* Tab may close before it can be read. */ }
+});
+chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
+  if (!changeInfo.url && changeInfo.status !== "complete") return;
+  try {
+    const { target } = await chrome.storage.session.get("target");
+    if (target?.tabId !== tabId) return;
+    await setTarget(tab);
+    await chrome.runtime.sendMessage({ type: "paperbridge-target-changed" }).catch(() => {});
+  } catch { /* Ignore tabs removed during navigation. */ }
 });

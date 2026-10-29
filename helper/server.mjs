@@ -7,7 +7,7 @@ import { spawn } from "node:child_process";
 import { pathToFileURL } from "node:url";
 import { createRemoteJWKSet, jwtVerify } from "jose";
 
-const VERSION = "0.0.1";
+const VERSION = "0.0.2";
 const DISCOVERY = "https://auth.openai.com/.well-known/openid-configuration";
 const SCOPES = "openid profile email offline_access resource.invoke chatgpt.tokens.use.direct";
 const RESOURCE = "https://api.openai.com/v1";

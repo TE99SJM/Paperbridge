@@ -1,6 +1,6 @@
 # Paperbridge privacy and data handling
 
-Paperbridge has no analytics service, telemetry endpoint, account database, or Paperbridge cloud backend. The installed extension keeps its workspace locally and sends selected context only after you approve a model request or manually paste a prompt into an AI website.
+Paperbridge has no analytics service, telemetry endpoint, account database, or Paperbridge cloud backend. The installed extension keeps its workspace locally and sends selected context only after you approve a model request manually paste a prompt into an AI website, or start an automatic ChatGPT tab fill.
 
 ## Local storage
 
@@ -14,7 +14,8 @@ Browser-profile access, local malware, an unlocked workspace, or a compromised e
 
 ## What goes to an AI
 
-- **Chat-website mode:** Paperbridge copies a prompt only after confirmation. You decide where to paste and send it; the extension does not read the conversation or its uploaded files.
+- **Automatic ChatGPT tab bridge:** After you start a run, Paperbridge sends detected draftable field labels/options, page metadata, and selected background to your chosen ChatGPT conversation and reads its newly rendered assistant response. Prior conversation content and credentials are not collected; ChatGPT can use its existing conversation context. No API request is made by this workflow. Temporary isolated-tab state is cleared when the run finishes or is cancelled, unless the workspace closes unexpectedly; reloading that chat tab clears it. ChatGPT messages remain in your account history according to its settings.
+- **Manual chat-website mode:** Paperbridge copies a prompt only after confirmation. You decide where to paste and send it; the extension does not read the conversation or its uploaded files.
 - **Direct API/helper mode:** The approved request contains selected background text, personal notes, and draftable field labels/options plus page title/site/step. It does not include API keys as prompt content, saved answers, current field values, or detected manual/user-only fields.
 - **Selected documents:** Selected text is sent verbatim, not automatically redacted. Remove private material you do not want the chosen provider to receive before approving the request.
 - **Provider credentials:** An API key goes in the provider's authentication header, to the configured host. Helper OAuth tokens remain in the helper and are used against OpenAI's documented service; they are not handed to the application page.
@@ -24,7 +25,7 @@ Existing-chat quotations are marked not locally verified. A local quote match on
 
 ## What goes to the application website
 
-Only approved values are written into supported controls after a second confirmation. Standard input/change events or supported control clicks notify the website, so its scripts may immediately save or transmit those values.
+The manual workflow writes approved values after a second confirmation. The automatic tab bridge writes valid supported answers immediately under your authorization to start that run, without per-answer approval. Standard input/change events or supported control clicks notify the website, so its scripts may immediately save or transmit those values.
 
 Paperbridge does not click Submit, Next, Save and Continue, Add-entry, signature, or agreement controls. Undo can change a current field but cannot recall data already transmitted or undo the site's own actions.
 

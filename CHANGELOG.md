@@ -4,9 +4,15 @@ This file records user-visible changes to Paperbridge. Release archives include 
 
 ## Version renumbering · 2026-10-29
 
-- Set this code line’s internal version to `0.0.1`.
+- Set this code line’s internal version to `0.0.2`.
 - Renumber the baseline as `0.0.1`, dual-tab update as `0.0.2`, and planned sidebar update as `0.0.3`.
 - Generated package names, workspace version, manifest, helper, and documentation follow the new numbering. Historical published downloads keep their existing names until separately replaced.
+
+## v0.0.2 · 2026-10-29
+
+- Add the experimental automatic ChatGPT dual-tab filling workflow, without form submission.
+- Update extension, workspace, package, and helper version identifiers to 0.0.2.
+- This branch is for testing; no 0.0.2 release has been published.
 
 ## v0.0.1 · 2026-10-29
 

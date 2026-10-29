@@ -1,10 +1,16 @@
+## Automatic ChatGPT filling
+
+Open your application and ChatGPT conversation in separate tabs. Click Paperbridge on the application, unlock, then choose **Fill automatically with ChatGPT**. Allow ChatGPT access, select the conversation, and start. Keep both tabs open. Supported empty fields fill from the new reply and saved user answers, without approving each answer. Review the website and submit it yourself. Missing facts and unsupported controls stay unchanged. This experimental website bridge requires no API key or helper and has not been validated in a real signed-in ChatGPT session.
+
+The instructions below describe the optional manual workflow.
+
 # Paperbridge for Opera GX: Start here
 
 Paperbridge fills application webpages after you review and approve the answers. Keep using the resume and background already in your AI conversation; you do not need to upload them again into the extension.
 
 ## Install the ready-built extension
 
-1. Download `Paperbridge-Local-Install-v0.0.1.zip` from the [Build and test workflow](https://github.com/TE99SJM/Paperbridge/actions/workflows/ci.yml). Extract it into a permanent folder, such as your Documents folder; do not run it from inside the ZIP.
+1. Download `Paperbridge-Local-Install-v0.0.2.zip` from the [Build and test workflow](https://github.com/TE99SJM/Paperbridge/actions/workflows/ci.yml). Extract it into a permanent folder, such as your Documents folder; do not run it from inside the ZIP.
 2. In Opera GX, enter `opera://extensions` in the address bar.
 3. Enable **Developer mode**, choose **Load unpacked**, and select the extracted folder with `manifest.json` directly inside it. Select the folder, not the ZIP or an individual file; these are Opera's documented unpacked-extension installation steps ([Opera Help](https://help.opera.com/en/extensions/testing/)).
 4. Pin Paperbridge's icon in the browser's extensions menu if you want easy access. Leave the extracted folder in place after installation.
@@ -13,7 +19,7 @@ Paperbridge fills application webpages after you review and approve the answers.
 
 The personal-install release is already built. You do not need Node.js, npm, an API key, or the optional helper for the existing-chat workflow.
 
-If you downloaded the full `Paperbridge-Opera-GX-v0.0.1.zip` instead, select its inner `extension` folder, not the outer project folder. GitHub's automatic source ZIP and Git clones require a build first; see [Build from source](README.md#build-from-source).
+If you downloaded the full `Paperbridge-Opera-GX-v0.0.2.zip` instead, select its inner `extension` folder, not the outer project folder. GitHub's automatic source ZIP and Git clones require a build first; see [Build from source](README.md#build-from-source).
 
 ## Use the AI conversation you already have
 

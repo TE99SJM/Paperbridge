@@ -2,7 +2,17 @@
 
 Paperbridge makes online paperwork less repetitive without handing over the final say. This Manifest V3 extension for desktop Opera GX and Chromium helps fill job applications using your existing AI conversation, your saved answers, or optional direct AI integrations.
 
-Scan a form, copy a prompt into your AI chat, paste the structured reply back, then review and approve the answers before filling. Paperbridge does not automatically read your chat history, guess eligibility answers, or submit applications.
+Choose **Fill automatically with ChatGPT** to scan the selected form, send its fields and selected background to an open ChatGPT conversation, read the new structured reply, and fill supported empty fields without per-answer approval. Paperbridge never submits the application. Manual copy/paste, review, and API/helper workflows remain available.
+
+## Automatic ChatGPT tab bridge (experimental)
+
+1. Open the application in one tab and your signed-in ChatGPT conversation in another. Use the conversation with your background, or select documents in Paperbridge.
+2. In Opera GX, open Paperbridge from Opera's sidebar button; in Chromium browsers, click the extension toolbar icon to open the side panel. Unlock the workspace.
+3. Click **Fill automatically with ChatGPT**, allow access to `chatgpt.com`, choose the conversation, and click **Start automatic fill**.
+4. Keep both tabs and the workspace open. Paperbridge sends one prompt, waits for a stable structured reply, and fills every supported empty field with a valid, sourced answer. No API key or local helper is used by this workflow.
+5. Review the completed application and submit it yourself. Missing facts, unsupported controls, existing values, and unsupplied eligibility answers remain unchanged. Exact saved user answers can fill eligibility fields. Undo is available for the completed batch.
+
+The bridge inserts text into ChatGPT's composer and clicks its Send button; it reads only newly rendered assistant replies for that run and does not export prior conversation text or credentials. It refuses to overwrite an unsent chat draft or interrupt an existing response. Cancel prevents subsequent filling but cannot recall a sent message. Website changes, rate limits, refusals, and long-running responses can stop the workflow; there are no automatic message retries. A browser fixture covers the integration mechanics, but local execution was blocked by an unavailable Chromium download. A real signed-in ChatGPT session has not been tested.
 
 [![Build and test](https://github.com/TE99SJM/Paperbridge/actions/workflows/ci.yml/badge.svg)](https://github.com/TE99SJM/Paperbridge/actions/workflows/ci.yml)
 
@@ -12,9 +22,9 @@ Scan a form, copy a prompt into your AI chat, paste the structured reply back, t
 | --- | --- |
 | `main` baseline | `0.0.1` |
 | Automatic ChatGPT dual-tab filling | `0.0.2` |
-| Planned docked sidebar update | `0.0.3` |
+| Docked Opera sidebar and Chromium side panel | `0.0.3` |
 
-This project now uses the `0.0.x` development series. Build ZIP filenames come from the package version. Renumbering source does not rename or publish historical GitHub releases. For a current build, use **Build and test → Run workflow**, select the intended branch, then download `paperbridge-verified-downloads` from the successful run’s Artifacts section.
+This project now uses the `0.0.x` development series. Build ZIP filenames come from the package version. Version `0.0.3` adds a docked sidebar/side panel instead of opening the old full-size workspace window. Renumbering source does not rename or publish historical GitHub releases. For a current build, use **Build and test → Run workflow**, select the intended branch, then download `paperbridge-verified-downloads` from the successful run’s Artifacts section.
 
 ## Install in Opera GX
 
@@ -61,7 +71,7 @@ Both release ZIPs include internal file checksums and have a separate `.zip.sha2
 
 ## Main workflow
 
-- **Application:** Select a page by clicking the extension toolbar icon, then scan visible fields. No background browsing monitor or permanent content script is installed.
+- **Application:** Select a page by clicking the extension toolbar icon, then scan visible fields. No background browsing monitor or permanent content script is installed. The automatic workflow also accesses only the ChatGPT tab explicitly selected for that run.
 - **Existing AI conversation:** Copy the reviewed form prompt into the conversation that already has your resume. Paste the full JSON reply back; no duplicate local upload is required.
 - **Review answers:** Validate, edit, and approve each answer. A quoted-text match means the quote exists, not that the conclusion is correct.
 - **Saved answers:** Reuse your own answers only for exactly matching questions, optionally scoped to a site and section. Conflicting matches require your input.
@@ -74,7 +84,7 @@ This project does not edit documents, fill PDF forms, submit applications, creat
 
 | Mode | Uses an existing chat's background? | Needs local background in Paperbridge? | Integration status |
 | --- | --- | --- | --- |
-| AI chat website | Yes, when you paste into that same conversation and the AI can still access its context | No, when “Use the resume and background already in my AI conversation” is selected | Copy-and-paste flow tested with synthetic replies; no chat scraping |
+| AI chat website | Yes, when you paste into that same conversation and the AI can still access its context | No, when “Use the resume and background already in my AI conversation” is selected | Manual handoff or experimental automatic ChatGPT tab bridge; synthetic browser fixture provided (not locally executed) |
 | Your provider API | No | Yes: notes, pasted text, or selected files | Request/response adapters tested with mocked services |
 | ChatGPT account helper | No | Yes | Official-preview protocol implemented and mock-tested; real account flow untested |
 
@@ -133,7 +143,7 @@ npm run package
 npm run verify:release
 ```
 
-Packaging validates required files, release permissions, ZIP CRCs, and byte-for-byte contents. It creates `release/Paperbridge-Opera-GX-v0.0.1.zip` and an adjacent SHA-256 file, and does not upload anything.
+Packaging validates required files, release permissions, ZIP CRCs, and byte-for-byte contents. It creates `release/Paperbridge-Opera-GX-v0.0.2.zip` and an adjacent SHA-256 file, and does not upload anything.
 
 `verify:release` extracts that ZIP into an isolated QA directory, verifies its file hashes, opens its actual built extension in Chromium, and checks the bundled helper's loopback health route with a temporary configuration. It does not authorize an AI account.
 
@@ -161,7 +171,7 @@ Do not remove the extension as the first upgrade step. Loading it from a new pat
 
 ## Troubleshooting
 
-- **“Manifest file is missing or unreadable”:** Select the folder with `manifest.json` directly inside it. In the personal-install ZIP this is the extracted folder; in the full project ZIP it is `Paperbridge-Opera-GX-v0.0.1/extension`, possibly one folder deeper than Windows' extraction folder.
+- **“Manifest file is missing or unreadable”:** Select the folder with `manifest.json` directly inside it. In the personal-install ZIP this is the extracted folder; in the full project ZIP it is `Paperbridge-Opera-GX-v0.0.2/extension`, possibly one folder deeper than Windows' extraction folder.
 - **“Could not load” a script or service worker:** A GitHub source checkout is not the ready-built download. Use the personal-install release asset, or run `npm ci` and `npm run build` before loading `extension/`.
 - **“Upload new add-on” or `persona.ini` error:** You are on the publishing website, not the local extension manager. Enter `opera://extensions` directly in the browser's address bar and use Load unpacked ([Opera Help](https://help.opera.com/en/extensions/testing/)).
 - **No application selected:** Return to the actual HTTP/HTTPS form and click the Paperbridge toolbar icon there. Opening the workspace on a browser settings page does not grant access to an application.
