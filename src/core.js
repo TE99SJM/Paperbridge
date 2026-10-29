@@ -1,6 +1,6 @@
 import { matchingSavedAnswer } from "./answers.js";
 
-export const VERSION = "0.0.3";
+export const VERSION = "0.1.1";
 export const MAX_FIELDS = 120;
 export const MAX_PROMPT_CHARS = 140000;
 export const MAX_DOCUMENT_CHARS = 250000;
