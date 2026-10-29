@@ -125,7 +125,15 @@ export function buildPrompt(scan, vault, { useChatContext = false } = {}) {
 
 export function parseAnswerObject(text) {
   if (typeof text !== "string" || text.length > 1000000) throw new Error("The answer is empty or exceeds the 1 MB safety limit.");
-  const clean = text.trim();
+  const clean = text.trim()
+    .replace(/^\\uFEFF/, "")
+    .replace(/&#x20;|&#32;|&nbsp;/gi, " ")
+    .replace(/&quot;/gi, '"')
+    .replace(/&#39;|&apos;/gi, "'")
+    .replace(/&amp;/gi, "&")
+    // Some chat copy paths insert a backslash immediately before a physical
+    // line break. Remove only that line-continuation pattern, not JSON \\n.
+    .replace(/\\\\\r?\n/g, "");
   const candidates = [clean];
   for (const m of clean.matchAll(/```(?:json)?\s*([\s\S]*?)```/gi)) candidates.push(m[1].trim());
   const start = clean.indexOf("{"), end = clean.lastIndexOf("}");
