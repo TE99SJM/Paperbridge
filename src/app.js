@@ -651,9 +651,12 @@ app.addEventListener("click", async ev => {
           invalidateDraft(); await persist(); dialog.close(); render();
         }); break;
       case "import-answer":
-        if (!scan || !answerContext) throw new Error("Prepare and copy a prompt for the current scan first.");
+        if (!scan) throw new Error("Scan the current application page first.");
+        // The user may return from ChatGPT after the sidebar was reloaded.
+        // Keep validation tied to this scan ID, and rebuild local evidence context if needed.
+        answerContext ||= { documents: structuredClone(vault.documents), notes: vault.notes };
         answers = applySavedAnswers(scan, vault, reviewAnswers(replyText, scan, answerContext)); results = []; replyText = "";
-        render(); notify("Answer structure and quotes checked. Review and approve each answer yourself."); break;
+        render(); notify("Answers validated. Review each answer before approving or filling."); break;
       case "select-grounded":
         for (const a of answers) {
           const field = scan.fields.find(f => f.id === a.fieldId);
