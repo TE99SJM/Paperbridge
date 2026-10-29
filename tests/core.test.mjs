@@ -53,9 +53,11 @@ test("empty and oversized context fail before transmission", () => {
   v.notes = "x".repeat(150000);
   assert.throws(() => buildPrompt(s, v), /too large/);
 });
-test("plain, fenced, and surrounded JSON are parsed without eval", () => {
+test("plain, fenced, surrounded, and HTML-encoded JSON are parsed without eval", () => {
   const value = '{"scanId":"s","answers":[]}';
   for (const text of [value, "```json\n" + value + "\n```", "Here is the result:\n" + value]) assert.equal(parseAnswerObject(text).scanId, "s");
+  const encoded = value.replace(/ /g, "&#x20;").replace(/"/g, "&quot;");
+  assert.equal(parseAnswerObject(encoded).scanId, "s");
   assert.throws(() => parseAnswerObject("(()=>{globalThis.hacked=true})()"), /No valid/);
   assert.equal(globalThis.hacked, undefined);
   assert.throws(() => parseAnswerObject("x".repeat(1000001)), /safety/);
