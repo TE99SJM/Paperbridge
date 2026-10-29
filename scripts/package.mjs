@@ -44,7 +44,7 @@ for (const file of required) assert.ok(contents.get(file)?.length, `Missing buil
 const manifest = JSON.parse(contents.get("extension/manifest.json").toString());
 assert.equal(manifest.manifest_version, 3);
 assert.equal(manifest.version, pkg.version);
-assert.deepEqual([...manifest.permissions].sort(), ["activeTab", "clipboardWrite", "scripting", "storage"]);
+assert.deepEqual([...manifest.permissions].sort(), ["activeTab", "clipboardWrite", "sidePanel", "scripting", "storage"]);
 assert.equal(manifest.host_permissions, undefined, "QA host permissions must never ship");
 assert.equal(manifest.content_scripts, undefined, "No permanent page injection is allowed");
 assert.equal(manifest.externally_connectable, undefined);

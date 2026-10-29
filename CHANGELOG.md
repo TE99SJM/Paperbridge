@@ -1,5 +1,12 @@
 # Paperbridge changelog
 
+## v0.0.2 · 2026-10-29
+
+- **Native sidebar workspace:** Open Paperbridge in the browser side panel on browsers that support the Chromium Side Panel API, keeping the form page visible beside it.
+- **Compatibility fallback:** Browsers without a working Side Panel API open a narrow standalone workspace instead of failing silently.
+- **AI bridge clarity:** Existing-chat mode continues to use an explicit copy/paste handoff; the extension does not scrape ChatGPT history. Direct provider/API and optional ChatGPT-account-helper drafting remain separate alternatives.
+- **Safety unchanged:** Form answers still require review and approval; Paperbridge does not click Submit or infer user-only eligibility statements.
+
 This file records user-visible changes to Paperbridge. Release archives include their own checksums; documentation-only repackaging can change an archive hash without changing the runtime version.
 
 ## Version renumbering · 2026-10-29

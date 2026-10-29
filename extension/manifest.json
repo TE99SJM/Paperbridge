@@ -1,13 +1,14 @@
 {
   "manifest_version": 3,
   "name": "Paperbridge: AI Form Assistant",
-  "version": "0.0.1",
-  "description": "Review answers from your AI chat or saved facts, then fill selected application fields. Never clicks Submit.",
+  "version": "0.0.2",
+  "description": "Keep a review-first AI form assistant in the browser side panel; approve answers before filling.",
   "permissions": [
     "activeTab",
+    "clipboardWrite",
     "scripting",
-    "storage",
-    "clipboardWrite"
+    "sidePanel",
+    "storage"
   ],
   "optional_host_permissions": [
     "https://*/*",
@@ -19,7 +20,7 @@
     "type": "module"
   },
   "action": {
-    "default_title": "Open Paperbridge for this page",
+    "default_title": "Open Paperbridge side panel for this page",
     "default_icon": {
       "16": "assets/icon-16.png",
       "32": "assets/icon-32.png"
@@ -41,5 +42,8 @@
   },
   "content_security_policy": {
     "extension_pages": "script-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'"
+  },
+  "side_panel": {
+    "default_path": "index.html"
   }
 }

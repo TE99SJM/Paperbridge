@@ -2,7 +2,7 @@
 
 Paperbridge makes online paperwork less repetitive without handing over the final say. This Manifest V3 extension for desktop Opera GX and Chromium helps fill job applications using your existing AI conversation, your saved answers, or optional direct AI integrations.
 
-Scan a form, copy a prompt into your AI chat, paste the structured reply back, then review and approve the answers before filling. Paperbridge does not automatically read your chat history, guess eligibility answers, or submit applications.
+Keep Paperbridge beside the form in the browser side panel where supported. Scan a form, use your existing AI conversation with an explicit copy/paste handoff or choose an integrated provider, then review and approve answers before filling. Paperbridge does not automatically read your chat history, guess eligibility answers, or submit applications.
 
 [![Build and test](https://github.com/TE99SJM/Paperbridge/actions/workflows/ci.yml/badge.svg)](https://github.com/TE99SJM/Paperbridge/actions/workflows/ci.yml)
 
@@ -11,8 +11,7 @@ Scan a form, copy a prompt into your AI chat, paste the structured reply back, t
 | Code line | Version |
 | --- | --- |
 | `main` baseline | `0.0.1` |
-| Automatic ChatGPT dual-tab filling | `0.0.2` |
-| Planned docked sidebar update | `0.0.3` |
+| Native side panel and AI form bridge | `0.0.2` |
 
 This project now uses the `0.0.x` development series. Build ZIP filenames come from the package version. Renumbering source does not rename or publish historical GitHub releases. For a current build, use **Build and test → Run workflow**, select the intended branch, then download `paperbridge-verified-downloads` from the successful run’s Artifacts section.
 
@@ -96,6 +95,8 @@ Provider policies, model access, limits, and billing still apply. ChatGPT and AP
 
 Detection is conservative but not a guarantee that every sensitive question will be recognized. Always inspect the labels, proposed values, and target page yourself, especially non-English forms, reordered entries, unusual custom widgets, or scripts that change a form after scanning.
 
+The sidebar is the primary workspace on browsers exposing Chromium’s Side Panel API; unsupported browsers fall back to a narrow workspace window. Existing-chat mode remains a user-mediated copy/paste bridge and does not read ChatGPT history. Direct API and the optional ChatGPT account helper are separate integrated options.
+
 The UI preview uses fictional in-memory data and simulated fills. It cannot access application tabs, sign in, or call AI providers; use the installed extension for real work and never enter secrets in the preview.
 
 ## Build from source
@@ -133,7 +134,7 @@ npm run package
 npm run verify:release
 ```
 
-Packaging validates required files, release permissions, ZIP CRCs, and byte-for-byte contents. It creates `release/Paperbridge-Opera-GX-v0.0.1.zip` and an adjacent SHA-256 file, and does not upload anything.
+Packaging validates required files, release permissions, ZIP CRCs, and byte-for-byte contents. It creates `release/Paperbridge-Opera-GX-v0.0.2.zip` and an adjacent SHA-256 file, and does not upload anything.
 
 `verify:release` extracts that ZIP into an isolated QA directory, verifies its file hashes, opens its actual built extension in Chromium, and checks the bundled helper's loopback health route with a temporary configuration. It does not authorize an AI account.
 
@@ -161,7 +162,7 @@ Do not remove the extension as the first upgrade step. Loading it from a new pat
 
 ## Troubleshooting
 
-- **“Manifest file is missing or unreadable”:** Select the folder with `manifest.json` directly inside it. In the personal-install ZIP this is the extracted folder; in the full project ZIP it is `Paperbridge-Opera-GX-v0.0.1/extension`, possibly one folder deeper than Windows' extraction folder.
+- **“Manifest file is missing or unreadable”:** Select the folder with `manifest.json` directly inside it. In the personal-install ZIP this is the extracted folder; in the full project ZIP it is `Paperbridge-Opera-GX-v0.0.2/extension`, possibly one folder deeper than Windows' extraction folder.
 - **“Could not load” a script or service worker:** A GitHub source checkout is not the ready-built download. Use the personal-install release asset, or run `npm ci` and `npm run build` before loading `extension/`.
 - **“Upload new add-on” or `persona.ini` error:** You are on the publishing website, not the local extension manager. Enter `opera://extensions` directly in the browser's address bar and use Load unpacked ([Opera Help](https://help.opera.com/en/extensions/testing/)).
 - **No application selected:** Return to the actual HTTP/HTTPS form and click the Paperbridge toolbar icon there. Opening the workspace on a browser settings page does not grant access to an application.
