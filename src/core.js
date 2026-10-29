@@ -138,12 +138,18 @@ function decodeHtmlEntities(value) {
 export function parseAnswerObject(text) {
   if (typeof text !== "string" || text.length > 1000000) throw new Error("The answer is empty or exceeds the 1 MB safety limit.");
   const clean = text.trim();
-  // Some chat/browser copy paths turn whitespace and punctuation into HTML entities.
-  // Try the original first so literal entity text inside a valid JSON answer is preserved.
-  const candidates = [clean];
+  // Some chat/browser copy paths encode spaces as HTML entities or add a
+  // backslash before each copied line. Keep the untouched input as first choice.
   const decoded = decodeHtmlEntities(clean);
+  const normalizeCopied = value => value
+    .replace(/\\\\\r?\n[ \t]*/g, "")
+    // Recover common copy artifacts such as \@ in an email address, while
+    // preserving every escape sequence that JSON actually permits.
+    .replace(/\\\\(?!["\\\\/bfnrtu]|u[0-9a-fA-F]{4})/g, "");
+  const candidates = [clean];
   if (decoded !== clean) candidates.push(decoded);
-  for (const source of [clean, decoded]) {
+  for (const source of [clean, decoded, normalizeCopied(clean), normalizeCopied(decoded)]) {
+    candidates.push(source);
     for (const m of source.matchAll(/```(?:json)?\s*([\s\S]*?)```/gi)) candidates.push(m[1].trim());
     const start = source.indexOf("{"), end = source.lastIndexOf("}");
     if (start >= 0 && end > start) candidates.push(source.slice(start, end + 1));
@@ -154,7 +160,7 @@ export function parseAnswerObject(text) {
       if (obj && !Array.isArray(obj) && Array.isArray(obj.answers)) return obj;
     } catch { /* Try another plain or fenced JSON candidate; never eval executable text. */ }
   }
-  throw new Error("No valid answer JSON was found. Copy the complete JSON object from your AI reply, including scanId and answers. If it shows HTML codes like &#x20;, paste the whole reply and try again.");
+  throw new Error("No valid answer JSON was found. Copy the complete JSON object from your AI reply, including scanId and answers. Paperbridge also attempts to repair copied line-continuation and HTML-entity formatting.");
 }
 
 export function validateFieldValue(field, value) {
