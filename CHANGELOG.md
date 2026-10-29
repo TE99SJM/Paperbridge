@@ -2,6 +2,12 @@
 
 This file records user-visible changes to Paperbridge. Release archives include their own checksums; documentation-only repackaging can change an archive hash without changing the runtime version.
 
+## v1.0.1 · 2026-10-29
+
+- Add the experimental automatic ChatGPT dual-tab filling workflow, without form submission.
+- Update extension, workspace, package, and helper version identifiers to 1.0.1.
+- This branch is for testing; no 1.0.1 release has been published.
+
 ## v1.0.0 · 2026-10-29
 
 - **First release:** A review-first Opera GX/Chromium extension for application webpages, including work history, education, and supported employer questions.
