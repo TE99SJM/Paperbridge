@@ -704,7 +704,10 @@ app.addEventListener("click", async ev => {
           invalidateDraft(); await persist(); dialog.close(); render();
         }); break;
       case "import-answer":
-        if (!scan || !answerContext) throw new Error("Prepare and copy a prompt for the current scan first.");
+        if (!scan) throw new Error("Scan the application page again, then prepare a fresh prompt and get a new JSON reply. Answers from an earlier scan cannot be safely matched.");
+        // The sidebar can be reopened after the scan. Rebuild the local context
+        // if the scan is still present, instead of requiring a needless prompt copy.
+        if (!answerContext) answerContext = { documents: structuredClone(vault.documents), notes: vault.notes };
         answers = applySavedAnswers(scan, vault, reviewAnswers(replyText, scan, answerContext)); results = []; replyText = "";
         render(); notify("Answer structure and quotes checked. Review and approve each answer yourself."); break;
       case "select-grounded":
