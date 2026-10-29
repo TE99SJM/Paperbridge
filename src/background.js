@@ -8,7 +8,7 @@ chrome.runtime.onStartup.addListener(() => privateStorage().catch(() => {}));
 let opening = false;
 
 async function setTarget(tab) {
-  if (!tab?.id || !/^https?:\\/\\//.test(tab.url || "")) {
+  if (!tab?.id || !(String(tab.url || "").startsWith("http://") || String(tab.url || "").startsWith("https://"))) {
     await chrome.storage.session.set({ target: null });
     return;
   }
@@ -23,7 +23,7 @@ chrome.action.onClicked.addListener(async tab => {
   try {
     // Call open synchronously from the toolbar gesture before any awaited work.
     // Chromium may require transient user activation for sidePanel.open().
-    const panelOpening = chrome.sidePanel?.open && tab?.id && /^https?:\\/\\//.test(tab.url || "")
+    const panelOpening = chrome.sidePanel?.open && tab?.id && (String(tab.url || "").startsWith("http://") || String(tab.url || "").startsWith("https://"))
       ? chrome.sidePanel.open({ tabId: tab.id })
       : null;
     await privateStorage();
