@@ -58,6 +58,8 @@ test("plain, fenced, surrounded, and HTML-encoded JSON are parsed without eval",
   for (const text of [value, "```json\n" + value + "\n```", "Here is the result:\n" + value]) assert.equal(parseAnswerObject(text).scanId, "s");
   const encoded = value.replace(/ /g, "&#x20;").replace(/"/g, "&quot;");
   assert.equal(parseAnswerObject(encoded).scanId, "s");
+  const copied = "{\\\\\n&#x20; \\"scanId\\": \\"s\\",\\\\\n&#x20; \\"answers\\": []\\\\\n}";
+  assert.equal(parseAnswerObject(copied).scanId, "s");
   assert.throws(() => parseAnswerObject("(()=>{globalThis.hacked=true})()"), /No valid/);
   assert.equal(globalThis.hacked, undefined);
   assert.throws(() => parseAnswerObject("x".repeat(1000001)), /safety/);
