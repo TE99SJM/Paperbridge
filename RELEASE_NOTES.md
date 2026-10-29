@@ -1,11 +1,11 @@
-# Paperbridge v0.0.1
+# Paperbridge v0.0.2
 
-Paperbridge helps fill application webpages using your existing AI conversation and answers you explicitly approve. It does not automatically read your chat history or submit an application.
+Paperbridge keeps a review-first form assistant in the browser side panel where supported, and bridges application forms to your existing AI chat or a separately configured provider integration. It does not scrape chat history or submit applications.
 
-## Choose a download
+## What's new in 0.0.2\n\n- Native browser side panel with a narrow popup fallback when the API is unavailable.\n- Existing-chat prompt/JSON handoff remains available alongside provider API and optional ChatGPT account-helper drafting.\n- Review, approval, sensitive-question restrictions, and no-submit behavior remain unchanged.\n\n## Choose a download
 
-- **Paperbridge-Local-Install-v0.0.1.zip:** Recommended for normal personal use. Extract it, then load the extracted folder containing `manifest.json`; no Node.js, API key, or helper is needed for AI chat website mode.
-- **Paperbridge-Opera-GX-v0.0.1.zip:** Full project bundle, including the ready-built extension, editable source, optional helper, practice pages, and tests. Load its inner `extension` folder.
+- **Paperbridge-Local-Install-v0.0.2.zip:** Recommended for normal personal use. Extract it, then load the extracted folder containing `manifest.json`; no Node.js, API key, or helper is needed for AI chat website mode.
+- **Paperbridge-Opera-GX-v0.0.2.zip:** Full project bundle, including the ready-built extension, editable source, optional helper, practice pages, and tests. Load its inner `extension` folder.
 - **Adjacent SHA-256 files:** Use the matching `.zip.sha256` asset to verify a downloaded archive. Both ZIPs also contain internal file checksums.
 
 GitHub's automatic “Source code” ZIP/tar.gz downloads are not prebuilt extension packages. Use one of the named release assets above unless you plan to run the source build.
