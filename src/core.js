@@ -131,6 +131,8 @@ export function parseAnswerObject(text) {
     .replace(/&quot;/gi, '"')
     .replace(/&#39;|&apos;/gi, "'")
     .replace(/&amp;/gi, "&")
+    // Some rich-text copy paths escape @ in email addresses; normalize before JSON.parse.
+    .replace(/\\@/g, "@")
     // Some chat copy paths insert a backslash immediately before a physical
     // line break. Remove only that line-continuation pattern, not JSON \\n.
     .replace(/\\\r?\n/g, "");
