@@ -148,6 +148,8 @@ The personal-install package contains the same complete runtime at the ZIP root,
 
 The [GitHub Actions workflow](https://github.com/TE99SJM/Paperbridge/actions/workflows/ci.yml) runs a clean install, unit/protocol tests, build, browser acceptance tests, dependency checks, and both package verifiers. It uses fictional fixtures and does not sign in to a real AI account or submit a real application.
 
+Maintainers can use the manual [Publish verified release workflow](https://github.com/TE99SJM/Paperbridge/actions/workflows/publish-release.yml) to attach downloads to an empty draft release. It requires an existing version tag and a successful build run for that exact commit, verifies the archived checksums, refuses to overwrite a published or populated release, and checks the downloads again after publishing.
+
 ## Update without losing your vault
 
 1. Export an encrypted backup and keep the passphrase separately. If you use the helper, sign out and stop it before replacing helper code.
