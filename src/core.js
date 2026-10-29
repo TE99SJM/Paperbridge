@@ -123,20 +123,38 @@ export function buildPrompt(scan, vault, { useChatContext = false } = {}) {
   return { prompt, sources, fields, chars: prompt.length };
 }
 
+function decodeHtmlEntities(value) {
+  return value.replace(/&(#(?:x[\da-f]+|\d+)|amp|quot|apos|lt|gt|nbsp);/gi, (match, entity) => {
+    if (entity[0] === "#") {
+      const hex = entity[1]?.toLowerCase() === "x";
+      const code = Number.parseInt(entity.slice(hex ? 2 : 1), hex ? 16 : 10);
+      return Number.isInteger(code) && code >= 0 && code <= 0x10ffff && !(code >= 0xd800 && code <= 0xdfff)
+        ? String.fromCodePoint(code) : match;
+    }
+    return ({ amp: "&", quot: '"', apos: "'", lt: "<", gt: ">", nbsp: " " })[entity.toLowerCase()] ?? match;
+  });
+}
+
 export function parseAnswerObject(text) {
   if (typeof text !== "string" || text.length > 1000000) throw new Error("The answer is empty or exceeds the 1 MB safety limit.");
   const clean = text.trim();
+  // Some chat/browser copy paths turn whitespace and punctuation into HTML entities.
+  // Try the original first so literal entity text inside a valid JSON answer is preserved.
   const candidates = [clean];
-  for (const m of clean.matchAll(/```(?:json)?\s*([\s\S]*?)```/gi)) candidates.push(m[1].trim());
-  const start = clean.indexOf("{"), end = clean.lastIndexOf("}");
-  if (start >= 0 && end > start) candidates.push(clean.slice(start, end + 1));
+  const decoded = decodeHtmlEntities(clean);
+  if (decoded !== clean) candidates.push(decoded);
+  for (const source of [clean, decoded]) {
+    for (const m of source.matchAll(/```(?:json)?\s*([\s\S]*?)```/gi)) candidates.push(m[1].trim());
+    const start = source.indexOf("{"), end = source.lastIndexOf("}");
+    if (start >= 0 && end > start) candidates.push(source.slice(start, end + 1));
+  }
   for (const c of candidates) {
     try {
       const obj = JSON.parse(c);
       if (obj && !Array.isArray(obj) && Array.isArray(obj.answers)) return obj;
-    } catch { /* Try a fenced JSON block, never eval or repair executable text. */ }
+    } catch { /* Try another plain or fenced JSON candidate; never eval executable text. */ }
   }
-  throw new Error("No valid answer JSON was found. Copy the entire JSON block, including scanId and answers, from your AI.");
+  throw new Error("No valid answer JSON was found. Copy the complete JSON object from your AI reply, including scanId and answers. If it shows HTML codes like &#x20;, paste the whole reply and try again.");
 }
 
 export function validateFieldValue(field, value) {
