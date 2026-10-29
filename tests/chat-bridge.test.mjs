@@ -25,3 +25,17 @@ test('navigation away from ChatGPT prevents sending', async () => {
   await assert.rejects(exchangeWithChat(1, 'prompt', 'scan', new AbortController().signal, api), /changed sites/);
   assert.deepEqual(calls, ['clear']);
 });
+
+
+test('injected composer errors reach the user instead of a generic no-response message', async () => {
+  const actions = [];
+  const api = {
+    tabs: { get: async () => ({ url: 'https://chatgpt.com/c/fictional' }) },
+    scripting: { executeScript: async args => {
+      actions.push(args.args[0]);
+      return [{ result: args.args[0] === 'start' ? { error: 'ChatGPT message box not recognized.' } : {} }];
+    } }
+  };
+  await assert.rejects(exchangeWithChat(1, 'prompt', 'scan', new AbortController().signal, api), /message box not recognized/);
+  assert.deepEqual(actions, ['start', 'clear']);
+});

@@ -1,30 +1,63 @@
 // Runs only in the explicitly selected ChatGPT tab's isolated extension world.
 export function chatPage(action, request) {
+  // Return errors explicitly: some Chromium/Opera versions omit thrown errors
+  // from executeScript results, leaving the caller with an undefined result.
+  try {
   const key = '__paperbridgeChatRequest';
+  const visible = node => node.getClientRects().length > 0 && getComputedStyle(node).visibility !== 'hidden';
+  const editorText = node => node.tagName === 'TEXTAREA' ? node.value : node.innerText || node.textContent || '';
+  const findEditor = () => {
+    const selectors = [
+      '#prompt-textarea',
+      '[contenteditable="true"][role="textbox"]',
+      '[contenteditable="true"][data-placeholder="Work with ChatGPT"]',
+      '[contenteditable="true"][aria-label="Work with ChatGPT"]',
+      'textarea[placeholder="Work with ChatGPT"]',
+      'textarea[placeholder="Message ChatGPT"]',
+      'textarea[data-testid="prompt-textarea"]'
+    ];
+    for (const selector of selectors) {
+      const candidates = [...document.querySelectorAll(selector)].filter(node =>
+        visible(node) && !node.disabled && !node.readOnly &&
+        (node.tagName === 'TEXTAREA' || node.getAttribute('contenteditable') === 'true'));
+      if (candidates.length > 1) throw new Error('Multiple ChatGPT message boxes found. Close extra chat panels before retrying.');
+      if (candidates.length === 1) return candidates[0];
+    }
+    throw new Error('ChatGPT message box not recognized. Open a regular ChatGPT conversation and try again.');
+  };
   const streaming = () => !!document.querySelector('[data-testid="stop-button"], button[aria-label="Stop streaming"]');
   if (action === 'start') {
     if (location.origin !== 'https://chatgpt.com') throw new Error('Select a ChatGPT website tab.');
     if (streaming()) throw new Error('ChatGPT is already responding. Wait before retrying.');
-    const editor = document.querySelector('#prompt-textarea');
-    if (!editor || editor.getAttribute('contenteditable') !== 'true') throw new Error('ChatGPT composer unavailable. Sign in and open a conversation.');
-    if (editor.textContent.trim()) throw new Error('ChatGPT has an unsent draft. Send or clear it first.');
+    const editor = findEditor();
+    if (editorText(editor).trim()) throw new Error('ChatGPT has an unsent draft. Send or clear it first.');
     const previous = [...document.querySelectorAll('[data-message-author-role="assistant"]')];
     const state = { id: request.id, href: location.href, previous, response: null, text: '', stable: 0 };
     // Insert plain text via the editor so its framework observes the change.
     editor.focus();
-    const selection = getSelection(), range = document.createRange();
-    range.selectNodeContents(editor); selection.removeAllRanges(); selection.addRange(range);
-    if (!document.execCommand('insertText', false, request.prompt)) throw new Error('Cannot insert the ChatGPT prompt. Use manual mode.');
+    if (editor.tagName === 'TEXTAREA') {
+      const setter = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value').set;
+      setter.call(editor, request.prompt);
+      editor.dispatchEvent(new Event('input', { bubbles: true }));
+    } else {
+      const selection = getSelection(), range = document.createRange();
+      range.selectNodeContents(editor); selection.removeAllRanges(); selection.addRange(range);
+      if (!document.execCommand('insertText', false, request.prompt)) throw new Error('Cannot insert the ChatGPT prompt. Use manual mode.');
+    }
+    if (editorText(editor).replace(/\r\n/g, '\n') !== request.prompt.replace(/\r\n/g, '\n')) throw new Error('ChatGPT did not accept the complete prompt. Nothing was sent.');
+    state.editor = editor;
     globalThis[key] = state;
     return { ready: true };
   }
   const state = globalThis[key];
   if (!state || state.id !== request.id) throw new Error('ChatGPT request was lost. Nothing will be filled.');
   if (action === 'send') {
-    const editor = document.querySelector('#prompt-textarea');
-    if (editor?.textContent !== request.prompt) throw new Error('The ChatGPT draft changed. Nothing was sent.');
-    const button = document.querySelector('[data-testid="send-button"]');
-    if (!button || button.disabled) return { waiting: true };
+    const editor = state.editor;
+    if (!editor?.isConnected || editorText(editor).replace(/\r\n/g, '\n') !== request.prompt.replace(/\r\n/g, '\n')) throw new Error('The ChatGPT draft changed. Nothing was sent.');
+    if (state.sent) throw new Error('This ChatGPT prompt was already sent.');
+    const buttons = [...document.querySelectorAll('[data-testid="send-button"], button[aria-label="Send prompt"], button[aria-label="Send message"]')].filter(visible);
+    if (buttons.length !== 1 || buttons[0].disabled || buttons[0].getAttribute('aria-disabled') === 'true') return { waiting: true };
+    const button = buttons[0];
     button.click(); state.sent = true;
     return { sent: true };
   }
@@ -43,6 +76,7 @@ export function chatPage(action, request) {
   }
   if (action === 'clear') { delete globalThis[key]; return {}; }
   throw new Error('Unknown chat bridge operation.');
+  } catch (error) { return { error: error.message || 'ChatGPT tab operation failed.' }; }
 }
 
 export async function exchangeWithChat(tabId, prompt, scanId, signal, api = chrome) {
@@ -53,7 +87,8 @@ export async function exchangeWithChat(tabId, prompt, scanId, signal, api = chro
     const tab = await api.tabs.get(tabId);
     if (new URL(tab.url).origin !== 'https://chatgpt.com') throw new Error('The selected ChatGPT tab changed sites.');
     const result = await api.scripting.executeScript({ target: { tabId }, func: chatPage, args: [action, request] });
-    if (!result[0]?.result) throw new Error('ChatGPT did not respond to the extension.');
+    if (result[0]?.result?.error) throw new Error(result[0].result.error);
+    if (!result[0]?.result) throw new Error('ChatGPT tab script returned no result. Reload the ChatGPT tab and try again.');
     return result[0].result;
   };
   const pause = () => new Promise((resolve, reject) => {
