@@ -7,7 +7,7 @@ Choose **Fill automatically with ChatGPT** to scan the selected form, send its f
 ## Automatic ChatGPT tab bridge (experimental)
 
 1. Open the application in one tab and your signed-in ChatGPT conversation in another. Use the conversation with your background, or select documents in Paperbridge.
-2. Click the Paperbridge toolbar icon on the application and unlock the workspace.
+2. In Opera GX, open Paperbridge from Opera's sidebar button; in Chromium browsers, click the extension toolbar icon to open the side panel. Unlock the workspace.
 3. Click **Fill automatically with ChatGPT**, allow access to `chatgpt.com`, choose the conversation, and click **Start automatic fill**.
 4. Keep both tabs and the workspace open. Paperbridge sends one prompt, waits for a stable structured reply, and fills every supported empty field with a valid, sourced answer. No API key or local helper is used by this workflow.
 5. Review the completed application and submit it yourself. Missing facts, unsupported controls, existing values, and unsupplied eligibility answers remain unchanged. Exact saved user answers can fill eligibility fields. Undo is available for the completed batch.
@@ -22,9 +22,9 @@ The bridge inserts text into ChatGPT's composer and clicks its Send button; it r
 | --- | --- |
 | `main` baseline | `0.0.1` |
 | Automatic ChatGPT dual-tab filling | `0.0.2` |
-| Planned docked sidebar update | `0.0.3` |
+| Docked Opera sidebar and Chromium side panel | `0.0.3` |
 
-This project now uses the `0.0.x` development series. Build ZIP filenames come from the package version. Renumbering source does not rename or publish historical GitHub releases. For a current build, use **Build and test → Run workflow**, select the intended branch, then download `paperbridge-verified-downloads` from the successful run’s Artifacts section.
+This project now uses the `0.0.x` development series. Build ZIP filenames come from the package version. Version `0.0.3` adds a docked sidebar/side panel instead of opening the old full-size workspace window. Renumbering source does not rename or publish historical GitHub releases. For a current build, use **Build and test → Run workflow**, select the intended branch, then download `paperbridge-verified-downloads` from the successful run’s Artifacts section.
 
 ## Install in Opera GX
 
