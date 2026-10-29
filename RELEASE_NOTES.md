@@ -1,28 +1,19 @@
-# Paperbridge v0.0.2
+# Paperbridge v1.0.2 — draft, unreleased
 
-Paperbridge helps fill application webpages using your existing AI conversation and answers you explicitly approve. It does not automatically read your chat history or submit an application.
+## v1.0.2 docked workspace (unreleased)
 
-## Choose a download
+- **Opera GX:** the toolbar icon toggles an in-page dock on the selected form. This is a DOM-based dock, not Opera's native sidebar. It reserves up to 420px beside the page and restores the previous margin when closed. Some sites' fixed layouts or frame CSP may obstruct it; no separate-window fallback is used. Browser settings, stores and protected pages cannot host the dock; the icon shows `!` with an explanatory tooltip.
+- **Chromium:** browsers exposing `chrome.sidePanel.open` use a native window-level side panel. Chrome 120+ is the build target. Browsers without that API use the explicit in-page dock. Opera is deliberately routed to the dock rather than assuming Chromium API compatibility.
+- **Why this approach:** [Chrome Side Panel API](https://developer.chrome.com/docs/extensions/reference/api/sidePanel) documents toolbar/user-gesture opening (Chrome 116+). [Opera sidebarAction](https://help.opera.com/en/extensions/sidebar-action-api/) documents `sidebar_action`/`opr.sidebarAction`, an MV2 example, setters and focus events, but no programmatic `open` method. Those documents do not establish current GX MV3 compatibility. The dock uses [programmatic content scripts and DOM](https://developer.chrome.com/docs/extensions/develop/concepts/content-scripts) plus an extension-origin iframe. Native Opera sidebar support is not claimed.
+- **Pinned application:** tab activation never changes the application. Clicking Paperbridge on another ordinary form explicitly changes it and cancels the previous run. Clicking on ChatGPT never replaces it. In Opera, switch back to the original form to see its dock; the automatic run can continue while ChatGPT is visible.
+- **Close/cancel:** runs belong to the panel, not the background worker. Closing/removing the dock, native panel closure/hiding, changing the application, or Cancel revokes the write connection. The scanner checks it before each field and again before a delayed custom-dropdown choice. No run resumes on reopening. An input operation already executing can finish; previously written fields remain. A sent AI prompt cannot be recalled. Undo remains available on reopening while the same form document is alive and access is still granted. Reloading/navigating the form loses in-memory undo. Closing a native panel currently stops all Paperbridge panel write connections across windows, conservatively.
+- **Storage:** encrypted vault format and storage key are unchanged. Wait for “Encrypted locally” before closing, and keep an encrypted backup. Document import, saved answers, overwrite protection, cancellation and undo retain their existing rules. Forms are never submitted and Next is never clicked.
 
-- **Paperbridge-Local-Install-v0.0.2.zip:** Recommended for normal personal use. Extract it, then load the extracted folder containing `manifest.json`; no Node.js, API key, or helper is needed for AI chat website mode.
-- **Paperbridge-Opera-GX-v0.0.2.zip:** Full project bundle, including the ready-built extension, editable source, optional helper, practice pages, and tests. Load its inner `extension` folder.
-- **Adjacent SHA-256 files:** Use the matching `.zip.sha256` asset to verify a downloaded archive. Both ZIPs also contain internal file checksums.
+### Update without losing your vault
 
-GitHub's automatic “Source code” ZIP/tar.gz downloads are not prebuilt extension packages. Use one of the named release assets above unless you plan to run the source build.
+1. In your existing Paperbridge installation, unlock it and choose **Encrypted backup**. Keep the JSON and your passphrase. The backup control is now visible at dock widths too.
+2. Extract `Paperbridge-Local-Install-v1.0.2.zip` somewhere temporary. Copy its contents **over the files in the exact folder your installed extension already uses**. Keep that folder path unchanged.
+3. At `opera://extensions` (or `chrome://extensions`), click **Reload** on the existing Paperbridge card. **Do not Remove it or load a second copy from a different folder.** Verify the extension ID stays the same. A changed ID/path uses separate browser storage; restore the encrypted backup if necessary.
+4. Reload the form tab to clear old injected scripts. Click the toolbar icon on the form, unlock with your existing passphrase, and choose your signed-in ChatGPT tab under **Fill automatically with ChatGPT**. Check the form yourself; advance and submit manually.
 
-## Install and start
-
-1. Extract the selected ZIP into a permanent folder.
-2. In Opera GX's address bar, enter `opera://extensions`.
-3. Enable Developer mode and use Load unpacked to select the folder with `manifest.json` directly inside it ([Opera Help](https://help.opera.com/en/extensions/testing/)).
-4. Open an application webpage, click Paperbridge's toolbar icon, and create a local passphrase of at least 12 characters.
-5. Leave AI chat website selected, scan visible fields, and prepare a prompt for the AI conversation that already has your background.
-6. Paste the AI's JSON reply back into Review answers, validate, inspect, and approve the values before filling.
-
-Do not use the Opera Add-ons publishing website or select an outer project folder. If the manifest is missing, check the folder level rather than adding or renaming files.
-
-## Validation and limits
-
-The local checks cover 37 unit/protocol tests, 14 grouped browser acceptance checks, and loading/unlocking both extracted production packages in Chromium. These tests use fictional forms and mock AI services, not real account authorization or application submission.
-
-Actual Opera GX installation and behavior on a particular employer's website still require a local check. Complete unsupported controls yourself, supply eligibility and employer-permission answers personally, and verify every filled value before manually continuing or submitting.
+No release is published for 1.0.2. Use the attached built ZIP or verified draft-PR CI artifacts. GitHub's automatic source ZIP is not a ready-built installation.

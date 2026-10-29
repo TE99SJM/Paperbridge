@@ -1,7 +1,8 @@
+import { browserOptions } from "../tests/browser-options.mjs";
 import assert from 'node:assert/strict';
 import { chromium } from 'playwright';
 import { chatPage } from '../src/chat-bridge.js';
-const browser = await chromium.launch({ headless: true });
+const browser = await chromium.launch({ headless: true, ...browserOptions });
 try {
   const page = await browser.newPage();
   await page.route('https://chatgpt.com/**', route => route.fulfill({ contentType: 'text/html', body: '<div data-message-author-role="assistant">Old answer</div><div id="prompt-textarea" contenteditable="true"></div><button data-testid="send-button">Send</button>' }));

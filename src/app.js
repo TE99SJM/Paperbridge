@@ -17,6 +17,34 @@ let modelChoices = [], helperInfo = null, replyText = "", results = [], undoCoun
 let busy = false, busyText = "", controller = null, saving = false, saveError = false, pendingSave = false, saveJobs = 0;
 let saveQueue = Promise.resolve(), saveTimer, toastTimer;
 let renderedView = null;
+let panelPort = null, panelClosed = false, nativePanelDocument = false;
+let panelToken = crypto.randomUUID();
+function renewLease() {
+  panelPort?.disconnect();
+  panelToken = crypto.randomUUID();
+  panelPort = chrome.runtime.connect({ name: `panel:${panelToken}` });
+  const port = panelPort;
+  port.onDisconnect.addListener(() => { if (panelPort === port) stopPanel(); });
+}
+
+function stopPanel() {
+  panelClosed = true;
+  controller?.abort();
+  panelPort?.disconnect(); panelPort = null;
+}
+window.addEventListener('pagehide', stopPanel);
+setInterval(() => { if (panelPort && !panelClosed) { try { panelPort.postMessage({type:'keepalive'}); } catch { stopPanel(); } } }, 10000);
+document.addEventListener('visibilitychange', () => {
+  // A docked iframe becomes hidden when its form tab is backgrounded: keep its run alive.
+  // A native panel's own hidden document is no longer an active workspace.
+  if (isExtension && nativePanelDocument) {
+    if (document.hidden) stopPanel();
+    else if (panelClosed) {
+      panelClosed = false; vault = null; keyInfo = null; resetPage(); renewLease(); render();
+    }
+  }
+});
+
 let lastActivity = Date.now();
 const e = value => String(value ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
 const ico = name => `<i data-lucide="${name}" aria-hidden="true"></i>`;
@@ -86,6 +114,7 @@ function progress(message) {
 }
 function resetPage() {
   controller?.abort();
+  if (isExtension && !panelClosed) renewLease();
   scan = null; invalidateDraft(); undoCount = 0; results = [];
 }
 async function getTarget() {
@@ -100,18 +129,21 @@ async function engine(method, payload) {
     if (method === "undo") return { results: results.filter(r => r.ok).map(r => ({ ...r })) };
     return true;
   }
+  if (panelClosed) throw new Error("Panel closed. Reopen Paperbridge to continue.");
+  const operationTarget = { ...target };
   if (!target?.tabId) throw new Error("Open an ordinary application webpage, then click the Paperbridge toolbar icon on that page.");
   let tab;
   try { tab = await chrome.tabs.get(target.tabId); } catch { throw new Error("The application tab was closed. Reopen the page and click the toolbar icon."); }
   if (!tab.url || new URL(tab.url).origin !== target.origin) throw new Error("The page changed sites or the permission expired. Click Paperbridge on the application page again.");
   try {
     await chrome.scripting.executeScript({ target: { tabId: target.tabId }, files: ["scanner.js"] });
+    if (panelClosed || controller?.signal.aborted || target?.tabId !== operationTarget.tabId) throw new Error("Run stopped or target changed.");
     const response = await chrome.scripting.executeScript({
       target: { tabId: target.tabId },
-      func: (action, data) => {
-        if (!["scan", "fill", "undo", "locate"].includes(action) || !globalThis.__paperbridgeEngine) throw new Error("Page engine unavailable.");
-        return globalThis.__paperbridgeEngine[action](data);
-      }, args: [method, payload ?? null]
+      func: (action, data, token) => {
+        if (!["scan", "fill", "undo", "locate", "status"].includes(action) || !globalThis.__paperbridgeEngine) throw new Error("Page engine unavailable.");
+        return globalThis.__paperbridgeEngine[action](action === "locate" ? data : { ...data, panelToken: token });
+      }, args: [method, payload ?? null, panelToken]
     });
     if (!response?.[0]?.result) throw new Error("The page did not respond. Rescan it.");
     return response[0].result;
@@ -483,7 +515,7 @@ function render() {
     const titles = { documents: "Optional background", page: "Application page", review: "Review answers", saved: "Saved answers", connection: "AI connection" };
     app.innerHTML = `<div class="shell">${navigationHTML()}<div class="workspace">
       ${preview ? `<div class="preview-banner">INTERACTIVE PREVIEW · Fictional sample data. No AI connection and no access to your browser tabs.</div>` : ""}
-      <header class="topbar"><div class="breadcrumb">Private workspace ${ico("chevron-right")}<strong>${titles[view]}</strong></div><div class="row"><span class="vault-state">${ico("lock-keyhole")}<span id="save-state">${preview ? "Demo · memory only" : saveError ? "Not saved" : saving ? "Encrypting changes…" : "Encrypted locally"}</span></span><button class="ghost icon-only small" data-action="${preview ? "help" : "lock"}" aria-label="${preview ? "Quick guide" : "Lock workspace"}">${ico(preview ? "circle-help" : "lock-keyhole")}</button></div></header>
+      <header class="topbar">${undoCount ? `<button class="small" data-action="undo">Undo last fill (${undoCount})</button>` : ""}<div class="breadcrumb">Private workspace ${ico("chevron-right")}<strong>${titles[view]}</strong></div><div class="row"><span class="vault-state">${ico("lock-keyhole")}<span id="save-state">${preview ? "Demo · memory only" : saveError ? "Not saved" : saving ? "Encrypting changes…" : "Encrypted locally"}</span></span><button class="ghost icon-only small" data-action="${preview ? "help" : "lock"}" aria-label="${preview ? "Quick guide" : "Lock workspace"}">${ico(preview ? "circle-help" : "lock-keyhole")}</button></div></header>
       ${busy ? `<div class="busy-bar" role="status"><span><span class="busy-dot"></span><span id="busy-text">${e(busyText)}</span></span>${controller ? '<button class="small" data-action="cancel">Cancel request</button>' : ""}</div>` : ""}
       <main class="content ${busy ? "busy-content" : ""}" id="main-content" tabindex="-1" ${busy ? 'aria-busy="true" inert' : ""}>${view === "documents" ? documentsHTML() : view === "page" ? pageHTML() : view === "review" ? reviewHTML() : view === "saved" ? savedHTML() : connectionHTML()}</main></div></div>`;
     if (busy) app.querySelectorAll(".nav-item").forEach(el => { el.disabled = true; });
@@ -576,7 +608,9 @@ app.addEventListener("submit", async ev => {
       vault.settings = { ...DEFAULT_SETTINGS, ...vault.settings };
       vault.savedAnswers ||= [];
     } else { keyInfo = await createVaultKey(password); vault = newVault(); await persist(); }
-    await getTarget(); lastActivity = Date.now(); view = "page";
+    await getTarget();
+    if (target && !preview) { try { undoCount = (await engine("status")).undoCount; } catch { /* permission may need a new toolbar gesture */ } }
+    lastActivity = Date.now(); view = "page";
   } catch (err) { vault = null; keyInfo = null; notify(friendlyError(err), true); }
   finally { busy = false; render(); }
 });
@@ -679,7 +713,7 @@ app.addEventListener("click", async ev => {
       case "add-saved": editSaved(); break;
       case "focus-page": await focusTarget(); break;
       case "draft": draft(); break;
-      case "cancel": controller?.abort(); break;
+      case "cancel": controller?.abort(); renewLease(); break;
       case "help": help(); break;
       case "backup": await downloadBackup(); break;
       case "import-backup": document.getElementById("backup-file").click(); break;
@@ -760,11 +794,18 @@ document.addEventListener("pointerdown", () => { lastActivity = Date.now(); }, {
 document.addEventListener("keydown", () => { lastActivity = Date.now(); }, { passive: true });
 setInterval(() => { if (vault && !preview && !busy && !saveError && Date.now() - lastActivity > 10 * 60000) lock(); }, 30000);
 window.addEventListener("beforeunload", ev => {
-  if (saving || pendingSave || busy) { ev.preventDefault(); ev.returnValue = ""; }
+  if (saving || pendingSave) { ev.preventDefault(); ev.returnValue = ""; }
 });
 async function start() {
+  if (isExtension && window.top === window) nativePanelDocument = !await chrome.tabs.getCurrent();
+  if (isExtension && window.top !== window) {
+    const token = new URL(location.href).searchParams.get('dock');
+    if (!token || !await chrome.runtime.sendMessage({ type: 'dock-authorize', token })) throw new Error('Unauthorized embedded workspace. Open Paperbridge using its toolbar icon.');
+  }
   if (preview) vault = demoVault();
   else {
+    // Extension UI owns the run. The scanner checks this live connection before each write.
+    renewLease();
     const stored = await chrome.storage.local.get("paperbridgeVault");
     storedBlob = stored.paperbridgeVault || null;
     await getTarget();

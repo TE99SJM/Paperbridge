@@ -238,3 +238,23 @@ th{color:var(--muted)}
   .answer-label{font-size:var(--text-sm)}
   button.small,button.icon-only{min-height:44px}
 }
+
+/* Dock widths, including 320px: keep controls readable and keyboard reachable. */
+@media(max-width:480px){
+  .sidebar{padding:12px}.sidebar nav{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .nav-item{min-height:54px;font-size:12px}.brand{flex-wrap:wrap}
+  .content,.topbar{padding:14px}.login-story,.login-form-wrap{padding:20px}
+  input,select,textarea{max-width:100%;min-width:0;font-size:14px}
+  .row,.busy-bar,.dialog-actions{flex-wrap:wrap}.row>*{max-width:100%}
+  .site-bar strong,.doc-name{overflow-wrap:anywhere;white-space:normal}
+  .dialog-actions button{flex:1}dialog{max-width:calc(100vw - 16px)}
+  .metrics{flex-wrap:wrap}.login-story{gap:16px}.login-story p{margin-top:8px}
+  .bottom-strip .row{flex-wrap:wrap}.busy-bar>span{min-width:0}
+}
+@media(max-width:650px){
+  .sidebar-bottom{display:flex;flex-wrap:wrap;gap:8px;padding:8px 0;margin:0}
+  .sidebar-bottom>p,.sidebar-bottom>.eyebrow{display:none}
+  .sidebar-bottom .version-label{width:100%}
+  .sidebar-bottom button{min-height:44px;padding:8px}
+  .topbar{flex-wrap:wrap}
+}

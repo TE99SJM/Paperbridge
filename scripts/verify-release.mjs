@@ -1,3 +1,4 @@
+import { browserOptions } from "../tests/browser-options.mjs";
 import fs from "node:fs/promises";
 import path from "node:path";
 import os from "node:os";
@@ -40,8 +41,8 @@ const manifest = JSON.parse(await fs.readFile(path.join(extension, "manifest.jso
 assert.equal(manifest.host_permissions, undefined);
 const profile = await fs.mkdtemp(path.join(root, "qa", "release-profile-"));
 const ctx = await chromium.launchPersistentContext(profile, {
-  headless: true, channel: "chromium", viewport: { width: 1280, height: 900 },
-  args: [`--disable-extensions-except=${extension}`, `--load-extension=${extension}`]
+  headless: true, channel: "chromium", ...browserOptions, viewport: { width: 1280, height: 900 },
+  args: [...(browserOptions.args || []), `--disable-extensions-except=${extension}`, `--load-extension=${extension}`]
 });
 try {
   const worker = ctx.serviceWorkers()[0] || await ctx.waitForEvent("serviceworker");
@@ -56,6 +57,19 @@ try {
   assert.equal(await page.locator("h1").textContent(), "Read the form first.");
   assert.match(await page.locator(".workflow-note").textContent(), /do not need to upload/);
   await page.screenshot({ path: path.join(extracted, "packaged-application.png") });
+  // Exercise the unmodified packaged native panel API under a real click gesture.
+  await page.evaluate(() => {
+    const button = document.createElement('button'); button.id = 'qa-open-panel'; button.textContent = 'Open packaged panel';
+    button.onclick = async () => {
+      try { const win = await chrome.windows.getCurrent(); await chrome.sidePanel.open({windowId:win.id}); button.dataset.result = 'opened'; }
+      catch (error) { button.dataset.result = error.message; }
+    };
+    document.body.append(button);
+  });
+  await page.locator('#qa-open-panel').click();
+  await page.waitForFunction(() => document.getElementById('qa-open-panel').dataset.result);
+  assert.equal(await page.locator('#qa-open-panel').getAttribute('data-result'),'opened');
+  await page.evaluate(async () => { const win = await chrome.windows.getCurrent(); await chrome.sidePanel.close({windowId:win.id}); });
 } finally { await ctx.close(); }
 if (!local) {
   const helperFolder = await fs.mkdtemp(path.join(os.tmpdir(), "paperbridge-release-helper-"));
@@ -73,4 +87,4 @@ if (!local) {
     await fs.rm(helperFolder, { recursive: true, force: true });
   }
 }
-console.log(JSON.stringify({ archive, extractedProject: project, checkedFileHashes: verified, packagedExtension: "loaded and unlocked", packagedHelper: local ? "not included; existing-chat workflow needs no helper" : "isolated loopback health check passed; no authentication attempted" }, null, 2));
+console.log(JSON.stringify({ archive, extractedProject: project, checkedFileHashes: verified, packagedExtension: "loaded, unlocked; native panel open/close API exercised by click (not Opera)", packagedHelper: local ? "not included; existing-chat workflow needs no helper" : "isolated loopback health check passed; no authentication attempted" }, null, 2));

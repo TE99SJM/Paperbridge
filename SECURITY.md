@@ -61,3 +61,7 @@ This release has not received an independent security audit. Test on actual Oper
 Report potential security vulnerabilities through [GitHub's private vulnerability reporting for Paperbridge](https://github.com/TE99SJM/Paperbridge/security/advisories/new), not a public issue. Include the version, affected component, impact, and a minimal fictional reproduction; do not include live credentials or personal documents.
 
 For ordinary bugs, use the repository's issue form and remove identifying information first. Never attach an unredacted application screenshot, resume, encrypted vault plus passphrase, API key, pairing code, or helper session file.
+
+## v1.0.2 dock boundary
+
+The Opera dock embeds a web-accessible extension page inside a closed shadow root. Before displaying the vault UI it validates a random background-issued token bound to the containing tab. Arbitrary website frames cannot unlock the UI. The page can remove or obstruct the dock; that revokes its runtime connection and stops further field writes. This does not protect against a compromised browser, another privileged extension, or a deliberately deceptive host page. Never enter the vault passphrase into a website field. Only index.html is directly web accessible; its scripts and assets load as extension-origin subresources.

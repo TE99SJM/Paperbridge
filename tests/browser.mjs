@@ -1,3 +1,4 @@
+import { browserOptions } from "../tests/browser-options.mjs";
 const { default: assert } = await import("node:assert/strict");
 const { default: fs } = await import("node:fs/promises");
 const { default: path } = await import("node:path");
@@ -71,8 +72,8 @@ export async function createHarness() {
   await new Promise(resolve => server.listen(0, "127.0.0.1", resolve));
   const base = `http://127.0.0.1:${server.address().port}`;
   const ctx = await chromium.launchPersistentContext(path.join(dir, "profile"), {
-    headless: true, channel: "chromium", viewport: { width: 1280, height: 900 },
-    args: [`--disable-extensions-except=${extDir}`, `--load-extension=${extDir}`],
+    headless: true, channel: "chromium", ...browserOptions, viewport: { width: 1280, height: 900 },
+    args: [...(browserOptions.args || []), `--disable-extensions-except=${extDir}`, `--load-extension=${extDir}`],
     acceptDownloads: true
   });
   const sw = ctx.serviceWorkers()[0] || await ctx.waitForEvent("serviceworker");
@@ -365,7 +366,7 @@ export async function previewFlow(h) {
   assert.match(await p.locator(".field-result").first().textContent(), /Demo/);
   await undo(p);
   await p.locator("#toast").waitFor({ state: "hidden", timeout: 15000 });
-  for (const [width, height] of [[1280, 900], [375, 812], [1280, 540]]) {
+  for (const [width, height] of [[1280, 900], [320, 700], [375, 812], [420, 700], [1280, 540]]) {
     await p.setViewportSize({ width, height });
     for (const view of ["page", "review", "saved", "connection", "documents"]) {
       await nav(p, view);
