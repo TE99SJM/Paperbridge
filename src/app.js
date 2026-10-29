@@ -87,11 +87,30 @@ function progress(message) {
 function resetPage() {
   controller?.abort();
   scan = null; invalidateDraft(); undoCount = 0; results = [];
+  clearSavedScan().catch(() => {});
 }
 async function getTarget() {
   if (preview) return;
-  const data = await chrome.storage.session.get("target");
+  const data = await chrome.storage.session.get(["target", "paperbridgeScan"]);
   target = data.target || null;
+  const saved = data.paperbridgeScan;
+  // Restore only a scan tied to the same selected tab and origin. This lets
+  // the sidebar reopen without accepting answers for another application.
+  if (saved?.scan && target?.tabId === saved.tabId && target?.origin === saved.origin) {
+    scan = saved.scan;
+    answerContext = { documents: structuredClone(vault.documents), notes: vault.notes };
+    answers = applySavedAnswers(scan, vault);
+  } else {
+    scan = null;
+    answerContext = null;
+  }
+}
+async function saveCurrentScan() {
+  if (preview || !scan || !target?.tabId || !target?.origin) return;
+  await chrome.storage.session.set({ paperbridgeScan: { scan, tabId: target.tabId, origin: target.origin } });
+}
+async function clearSavedScan() {
+  if (!preview) await chrome.storage.session.remove("paperbridgeScan");
 }
 async function engine(method, payload) {
   if (preview) {
@@ -171,6 +190,7 @@ async function scanPage(inspectDropdowns = false) {
   await task(async () => {
     resetPage();
     scan = await engine("scan", { inspectDropdowns });
+    await saveCurrentScan();
     answers = applySavedAnswers(scan, vault);
     view = "page";
     notify(scan.fields.length ? `Found ${scan.fields.length} fields. Nothing was sent to AI.` : "No supported visible form fields were found. Expand the relevant page section and rescan.");
@@ -248,6 +268,7 @@ async function automaticFill() {
       scan = null; invalidateDraft(); undoCount = 0; results = [];
       signal.throwIfAborted();
       scan = await engine("scan", { inspectDropdowns: false });
+      await saveCurrentScan();
       const currentScan = scan;
       const context = { documents: structuredClone(vault.documents), notes: vault.notes };
       let rows = applySavedAnswers(scan, vault);
