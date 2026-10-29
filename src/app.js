@@ -250,6 +250,9 @@ function draft() {
 }
 async function automaticFill() {
   if (preview) throw new Error("Install the extension to use the ChatGPT tab bridge.");
+  if (!target?.tabId || !target?.origin || target.origin === "https://chatgpt.com") {
+    throw new Error("First open the actual application form in its own tab and click the Paperbridge toolbar icon there. Keep ChatGPT open in a separate tab, then retry.");
+  }
   const allowed = await chrome.permissions.request({ origins: ["https://chatgpt.com/*"] });
   if (!allowed) throw new Error("ChatGPT tab access is required for automatic filling.");
   const tabs = (await chrome.tabs.query({ url: "https://chatgpt.com/*" })).filter(t => t.id !== target?.tabId);
