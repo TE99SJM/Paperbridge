@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Paperbridge: AI Form Assistant",
-  "version": "0.0.3",
+  "version": "0.1.1",
   "description": "Keep a review-first AI form assistant in Opera's sidebar or Chromium's side panel; approve answers before filling.",
   "permissions": [
     "activeTab",
