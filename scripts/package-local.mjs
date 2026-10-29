@@ -47,7 +47,7 @@ assert.equal(manifest.version, pkg.version);
 assert.equal(manifest.manifest_version, 3);
 assert.equal(manifest.host_permissions, undefined);
 assert.equal(manifest.content_scripts, undefined);
-assert.deepEqual([...manifest.permissions].sort(), ["activeTab", "clipboardWrite", "scripting", "storage"]);
+assert.deepEqual([...manifest.permissions].sort(), ["activeTab", "clipboardWrite", "sidePanel", "scripting", "storage"]);
 for (const [file, bytes] of files) zip.file(file, bytes, { unixPermissions: 0o100644 });
 zip.file("CHECKSUMS.sha256", [...files].map(([file, bytes]) => `${hash(bytes)}  ${file}`).join("\n") + "\n", { unixPermissions: 0o100644 });
 const bytes = await zip.generateAsync({ type: "nodebuffer", platform: "UNIX", compression: "DEFLATE", compressionOptions: { level: 9 } });
