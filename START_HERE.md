@@ -1,3 +1,9 @@
+## Automatic ChatGPT filling
+
+Open your application and ChatGPT conversation in separate tabs. Click Paperbridge on the application, unlock, then choose **Fill automatically with ChatGPT**. Allow ChatGPT access, select the conversation, and start. Keep both tabs open. Supported empty fields fill from the new reply and saved user answers, without approving each answer. Review the website and submit it yourself. Missing facts and unsupported controls stay unchanged. This experimental website bridge requires no API key or helper and has not been validated in a real signed-in ChatGPT session.
+
+The instructions below describe the optional manual workflow.
+
 # Paperbridge for Opera GX: Start here
 
 Paperbridge fills application webpages after you review and approve the answers. Keep using the resume and background already in your AI conversation; you do not need to upload them again into the extension.
