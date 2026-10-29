@@ -21,13 +21,15 @@ chrome.action.onClicked.addListener(async tab => {
   if (opening) return;
   opening = true;
   try {
+    // Call open synchronously from the toolbar gesture before any awaited work.
+    // Chromium may require transient user activation for sidePanel.open().
+    const panelOpening = chrome.sidePanel?.open && tab?.id && /^https?:\\/\\//.test(tab.url || "")
+      ? chrome.sidePanel.open({ tabId: tab.id })
+      : null;
     await privateStorage();
-    // Open the panel immediately while the toolbar-click user gesture is active.
-    // Store the target in parallel so the side-panel app can attach to this tab.
-    if (chrome.sidePanel?.open && tab?.id && /^https?:\\/\\//.test(tab.url || "")) {
-      const openingPanel = chrome.sidePanel.open({ tabId: tab.id });
+    if (panelOpening) {
       await setTarget(tab);
-      await openingPanel;
+      await panelOpening;
       await chrome.runtime.sendMessage({ type: "paperbridge-target-changed" }).catch(() => {});
       return;
     }
