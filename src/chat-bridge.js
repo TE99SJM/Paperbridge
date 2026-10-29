@@ -6,6 +6,9 @@ export function chatPage(action, request) {
   const key = '__paperbridgeChatRequest';
   const visible = node => node.getClientRects().length > 0 && getComputedStyle(node).visibility !== 'hidden';
   const editorText = node => node.tagName === 'TEXTAREA' ? node.value : node.innerText || node.textContent || '';
+  // Rich-text editors render each line as a paragraph and can use NBSP
+  // for indentation. Compare that formatting without discarding any words.
+  const renderedText = text => text.replace(/\u00a0/g, ' ').replace(/\r\n?/g, '\n').replace(/\n+/g, '\n').replace(/^\n|\n$/g, '');
   const findEditor = () => {
     const selectors = [
       '#prompt-textarea',
@@ -44,23 +47,21 @@ export function chatPage(action, request) {
       range.selectNodeContents(editor); selection.removeAllRanges(); selection.addRange(range);
       if (!document.execCommand('insertText', false, request.prompt)) throw new Error('Cannot insert the ChatGPT prompt. Use manual mode.');
     }
-    // Chromium's contenteditable renderer can add an extra visual newline
-    // around empty block elements. Compare paragraph breaks canonically,
-    // then retain the exact inserted text to detect any subsequent edits.
-    const paragraphs = text => text.replace(/\r\n/g, '\n').replace(/\n{2,}/g, '\n\n');
-    if (paragraphs(editorText(editor)) !== paragraphs(request.prompt)) throw new Error('ChatGPT did not accept the complete prompt. Nothing was sent.');
-    state.editor = editor;
-    state.insertedText = editorText(editor);
+    if (renderedText(editorText(editor)) !== renderedText(request.prompt)) throw new Error('ChatGPT did not accept the complete prompt. Nothing was sent.');
     globalThis[key] = state;
     return { ready: true };
   }
   const state = globalThis[key];
   if (!state || state.id !== request.id) throw new Error('ChatGPT request was lost. Nothing will be filled.');
   if (action === 'send') {
-    const editor = state.editor;
-    if (!editor?.isConnected || editorText(editor) !== state.insertedText) throw new Error('The ChatGPT draft changed. Nothing was sent.');
     if (state.sent) throw new Error('This ChatGPT prompt was already sent.');
-    const buttons = [...document.querySelectorAll('[data-testid="send-button"], button[aria-label="Send prompt"], button[aria-label="Send message"]')].filter(visible);
+    if (location.href !== state.href) throw new Error('The ChatGPT conversation changed. Nothing was sent.');
+    // The chat framework can replace the composer or normalize its paragraphs
+    // after the input event. Re-find it and compare content, not DOM identity
+    // or a pre-render snapshot. Substantive edits still stop the run.
+    const editor = findEditor();
+    if (renderedText(editorText(editor)) !== renderedText(request.prompt)) throw new Error('The ChatGPT draft changed. Nothing was sent.');
+    const buttons = [...document.querySelectorAll('[data-testid="send-button"], button[aria-label="Send prompt"], button[aria-label="Send message"], button#composer-submit-button, button[type="submit"][aria-label="Send"]')].filter(visible);
     if (buttons.length !== 1 || buttons[0].disabled || buttons[0].getAttribute('aria-disabled') === 'true') return { waiting: true };
     const button = buttons[0];
     button.click(); state.sent = true;

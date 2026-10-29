@@ -35,7 +35,7 @@ try {
     '<div contenteditable="true" role="textbox" aria-label="Work with ChatGPT"></div>',
     '<textarea placeholder="Work with ChatGPT"></textarea>'
   ]) {
-    await page.evaluate(markup => { document.body.innerHTML = markup + '<button aria-label="Send message">Send</button>'; }, markup);
+    await page.evaluate(markup => { document.body.innerHTML = markup + '<button type="submit" aria-label="Send">Send</button>'; }, markup);
     request.prompt = 'Fictional form prompt\n\nWith multiple paragraphs.';
     const started = await run('start');
     assert.equal(started.ready, true, JSON.stringify(started));
@@ -48,6 +48,62 @@ try {
     assert.equal((await run('send')).sent, true);
     assert.match((await run('send')).error, /already sent/);
     await run('clear');
+  }
+  // Reproduce the paragraph-based composer and JSON indentation used by ChatGPT.
+  // Its innerText differs from inserted plain text even when all content arrived.
+  request.prompt = 'Draft truthful form answers.\nReturn only JSON.\n\nBEGIN_UNTRUSTED_FORM_DATA_JSON\n' + JSON.stringify({
+    scanId: request.scanId,
+    fields: Array.from({ length: 120 }, (_, i) => ({ id: `field-${i}`, label: `Fictional field ${i}`, options: [] }))
+  }, null, 2) + '\nEND_UNTRUSTED_FORM_DATA_JSON';
+  for (const truncate of [false, true]) {
+    await page.evaluate(({ prompt, truncate }) => {
+      document.body.innerHTML = '<div id="prompt-textarea" contenteditable="true" role="textbox"><p><br></p></div><button id="composer-submit-button" aria-label="Send prompt">Send</button>';
+      globalThis.fixtureSends = 0;
+      document.querySelector('button').onclick = () => { globalThis.fixtureSends++; };
+      const editor = document.querySelector('#prompt-textarea');
+      editor.addEventListener('input', () => {
+        const text = truncate ? prompt.slice(0, -10) : prompt;
+        editor.replaceChildren(...text.split('\n').map(line => {
+          const p = document.createElement('p');
+          if (line) p.textContent = line.replace(/ /g, '\u00a0');
+          else p.append(document.createElement('br'));
+          return p;
+        }));
+      }, { once: true });
+    }, { prompt: request.prompt, truncate });
+    const started = await run('start');
+    if (truncate) {
+      assert.match(started.error, /complete prompt/);
+      assert.equal(await page.evaluate(() => globalThis.fixtureSends), 0);
+    } else {
+      assert.equal(started.ready, true, JSON.stringify(started));
+      // Deferred framework rendering may replace the composer entirely.
+      await page.evaluate(prompt => {
+        const editor = document.querySelector('#prompt-textarea');
+        const replacement = editor.cloneNode(false);
+        replacement.style.whiteSpace = 'pre-wrap';
+        replacement.textContent = prompt;
+        editor.replaceWith(replacement);
+      }, request.prompt);
+      const send = await run('send');
+      assert.equal(send.sent, true, JSON.stringify(send));
+      assert.equal(await page.evaluate(() => globalThis.fixtureSends), 1, 'Prompt must send automatically, exactly once');
+      assert.match((await run('send')).error, /already sent/);
+      assert.equal(await page.evaluate(() => globalThis.fixtureSends), 1);
+      await run('clear');
+      // Replacement must still reject changed message content.
+      await page.evaluate(() => { document.querySelector('#prompt-textarea').textContent = ''; });
+      assert.equal((await run('start')).ready, true);
+      await page.evaluate(() => {
+        const editor = document.querySelector('#prompt-textarea');
+        const replacement = editor.cloneNode(true);
+        replacement.append(document.createTextNode(' UNAUTHORIZED CHANGE'));
+        editor.replaceWith(replacement);
+      });
+      assert.match((await run('send')).error, /draft changed/);
+      assert.equal(await page.evaluate(() => globalThis.fixtureSends), 1);
+      await run('clear');
+    }
   }
   await page.evaluate(() => { document.body.innerHTML = '<div contenteditable="true" role="textbox"></div><div contenteditable="true" role="textbox"></div>'; });
   assert.match((await run('start')).error, /Multiple ChatGPT message boxes/);
