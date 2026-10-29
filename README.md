@@ -16,9 +16,19 @@ The bridge inserts text into ChatGPT's composer and clicks its Send button; it r
 
 [![Build and test](https://github.com/TE99SJM/Paperbridge/actions/workflows/ci.yml/badge.svg)](https://github.com/TE99SJM/Paperbridge/actions/workflows/ci.yml)
 
+## Version numbering
+
+| Code line | Version |
+| --- | --- |
+| `main` baseline | `0.0.1` |
+| Automatic ChatGPT dual-tab filling | `0.0.2` |
+| Planned docked sidebar update | `0.0.3` |
+
+This project now uses the `0.0.x` development series. Build ZIP filenames come from the package version. Renumbering source does not rename or publish historical GitHub releases. For a current build, use **Build and test → Run workflow**, select the intended branch, then download `paperbridge-verified-downloads` from the successful run’s Artifacts section.
+
 ## Install in Opera GX
 
-Download the [ready-to-install ZIP](https://github.com/TE99SJM/Paperbridge/releases/download/v1.0.0/Paperbridge-Local-Install-v1.0.0.zip) from the [latest release](https://github.com/TE99SJM/Paperbridge/releases/latest). Existing-chat mode requires no Node.js, API key, or local helper.
+Download the [ready-to-install ZIP](https://github.com/TE99SJM/Paperbridge/actions/workflows/ci.yml) from the [Build and test workflow](https://github.com/TE99SJM/Paperbridge/actions/workflows/ci.yml). Existing-chat mode requires no Node.js, API key, or local helper.
 
 1. Right-click the downloaded ZIP and choose **Extract All**. Extract it into a permanent folder, such as a Paperbridge folder inside Documents.
 2. Open the extracted folder and check that `manifest.json` is directly inside it.
@@ -35,8 +45,8 @@ For the complete click-by-click workflow, read [Start here](START_HERE.md). For 
 
 | Download | What it contains | Folder to load |
 | --- | --- | --- |
-| [Personal-install ZIP](https://github.com/TE99SJM/Paperbridge/releases/download/v1.0.0/Paperbridge-Local-Install-v1.0.0.zip) | Recommended: built extension and essential instructions | The extracted folder itself; `manifest.json` is at its root |
-| [Full project ZIP](https://github.com/TE99SJM/Paperbridge/releases/download/v1.0.0/Paperbridge-Opera-GX-v1.0.0.zip) | Built extension, editable source, optional helper, practice pages, and tests | The inner `extension/` folder |
+| [Personal-install ZIP](https://github.com/TE99SJM/Paperbridge/actions/workflows/ci.yml) | Recommended: built extension and essential instructions | The extracted folder itself; `manifest.json` is at its root |
+| [Full project ZIP](https://github.com/TE99SJM/Paperbridge/actions/workflows/ci.yml) | Built extension, editable source, optional helper, practice pages, and tests | The inner `extension/` folder |
 | GitHub's **Code → Download ZIP**, or a Git clone | Source code; generated bundles are intentionally not committed | Run the source build below first, then load `extension/` |
 
 Both release ZIPs include internal file checksums and have a separate `.zip.sha256` asset. Do not load GitHub's automatically generated source ZIP as though it were the ready-built release.
@@ -133,7 +143,7 @@ npm run package
 npm run verify:release
 ```
 
-Packaging validates required files, release permissions, ZIP CRCs, and byte-for-byte contents. It creates `release/Paperbridge-Opera-GX-v1.0.0.zip` and an adjacent SHA-256 file, and does not upload anything.
+Packaging validates required files, release permissions, ZIP CRCs, and byte-for-byte contents. It creates `release/Paperbridge-Opera-GX-v0.0.2.zip` and an adjacent SHA-256 file, and does not upload anything.
 
 `verify:release` extracts that ZIP into an isolated QA directory, verifies its file hashes, opens its actual built extension in Chromium, and checks the bundled helper's loopback health route with a temporary configuration. It does not authorize an AI account.
 
@@ -161,7 +171,7 @@ Do not remove the extension as the first upgrade step. Loading it from a new pat
 
 ## Troubleshooting
 
-- **“Manifest file is missing or unreadable”:** Select the folder with `manifest.json` directly inside it. In the personal-install ZIP this is the extracted folder; in the full project ZIP it is `Paperbridge-Opera-GX-v1.0.0/extension`, possibly one folder deeper than Windows' extraction folder.
+- **“Manifest file is missing or unreadable”:** Select the folder with `manifest.json` directly inside it. In the personal-install ZIP this is the extracted folder; in the full project ZIP it is `Paperbridge-Opera-GX-v0.0.2/extension`, possibly one folder deeper than Windows' extraction folder.
 - **“Could not load” a script or service worker:** A GitHub source checkout is not the ready-built download. Use the personal-install release asset, or run `npm ci` and `npm run build` before loading `extension/`.
 - **“Upload new add-on” or `persona.ini` error:** You are on the publishing website, not the local extension manager. Enter `opera://extensions` directly in the browser's address bar and use Load unpacked ([Opera Help](https://help.opera.com/en/extensions/testing/)).
 - **No application selected:** Return to the actual HTTP/HTTPS form and click the Paperbridge toolbar icon there. Opening the workspace on a browser settings page does not grant access to an application.

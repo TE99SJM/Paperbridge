@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Paperbridge: AI Form Assistant",
-  "version": "1.0.1",
+  "version": "0.0.2",
   "description": "Review answers from your AI chat or saved facts, then fill selected application fields. Never clicks Submit.",
   "permissions": [
     "activeTab",
