@@ -2,7 +2,13 @@
 
 This file records user-visible changes to Paperbridge. Release archives include their own checksums; documentation-only repackaging can change an archive hash without changing the runtime version.
 
-## v1.0.0 · 2026-10-29
+## Version renumbering · 2026-10-29
+
+- Set this code line’s internal version to `0.0.1`.
+- Renumber the baseline as `0.0.1`, dual-tab update as `0.0.2`, and planned sidebar update as `0.0.3`.
+- Generated package names, workspace version, manifest, helper, and documentation follow the new numbering. Historical published downloads keep their existing names until separately replaced.
+
+## v0.0.1 · 2026-10-29
 
 - **First release:** A review-first Opera GX/Chromium extension for application webpages, including work history, education, and supported employer questions.
 - **Existing AI chat:** A copy-and-paste prompt/JSON workflow that reuses background already in an AI conversation without scraping the chat or uploading the same documents again.

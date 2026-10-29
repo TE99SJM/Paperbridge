@@ -16,7 +16,7 @@ This record distinguishes tested local behavior from unverified real-service com
 
 ## Simplified personal-install package
 
-On 2026-10-29, a separate `Paperbridge-Local-Install-v1.0.0.zip` was prepared for direct personal installation. Its `manifest.json` is at the ZIP root, so the folder created by Windows extraction is the folder to select in Opera's Load unpacked dialog.
+On 2026-10-29, a separate `Paperbridge-Local-Install-v0.0.1.zip` was prepared for direct personal installation. Its `manifest.json` is at the ZIP root, so the folder created by Windows extraction is the folder to select in Opera's Load unpacked dialog.
 
 - **Runtime preservation:** All 201 runtime files matched the existing full release byte-for-byte. No extension functionality, permissions, or UI was changed.
 - **Contents:** The archive contains 206 files, including installation instructions, privacy/security notes, licensing, and internal checksums. It excludes the source project, optional helper, practice server, QA screenshots, browser profiles, and `node_modules`.
