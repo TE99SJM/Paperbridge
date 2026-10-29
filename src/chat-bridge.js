@@ -44,8 +44,13 @@ export function chatPage(action, request) {
       range.selectNodeContents(editor); selection.removeAllRanges(); selection.addRange(range);
       if (!document.execCommand('insertText', false, request.prompt)) throw new Error('Cannot insert the ChatGPT prompt. Use manual mode.');
     }
-    if (editorText(editor).replace(/\r\n/g, '\n') !== request.prompt.replace(/\r\n/g, '\n')) throw new Error('ChatGPT did not accept the complete prompt. Nothing was sent.');
+    // Chromium's contenteditable renderer can add an extra visual newline
+    // around empty block elements. Compare paragraph breaks canonically,
+    // then retain the exact inserted text to detect any subsequent edits.
+    const paragraphs = text => text.replace(/\r\n/g, '\n').replace(/\n{2,}/g, '\n\n');
+    if (paragraphs(editorText(editor)) !== paragraphs(request.prompt)) throw new Error('ChatGPT did not accept the complete prompt. Nothing was sent.');
     state.editor = editor;
+    state.insertedText = editorText(editor);
     globalThis[key] = state;
     return { ready: true };
   }
@@ -53,7 +58,7 @@ export function chatPage(action, request) {
   if (!state || state.id !== request.id) throw new Error('ChatGPT request was lost. Nothing will be filled.');
   if (action === 'send') {
     const editor = state.editor;
-    if (!editor?.isConnected || editorText(editor).replace(/\r\n/g, '\n') !== request.prompt.replace(/\r\n/g, '\n')) throw new Error('The ChatGPT draft changed. Nothing was sent.');
+    if (!editor?.isConnected || editorText(editor) !== state.insertedText) throw new Error('The ChatGPT draft changed. Nothing was sent.');
     if (state.sent) throw new Error('This ChatGPT prompt was already sent.');
     const buttons = [...document.querySelectorAll('[data-testid="send-button"], button[aria-label="Send prompt"], button[aria-label="Send message"]')].filter(visible);
     if (buttons.length !== 1 || buttons[0].disabled || buttons[0].getAttribute('aria-disabled') === 'true') return { waiting: true };

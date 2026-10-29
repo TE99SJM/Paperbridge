@@ -37,7 +37,13 @@ try {
   ]) {
     await page.evaluate(markup => { document.body.innerHTML = markup + '<button aria-label="Send message">Send</button>'; }, markup);
     request.prompt = 'Fictional form prompt\n\nWith multiple paragraphs.';
-    assert.equal((await run('start')).ready, true);
+    const started = await run('start');
+    assert.equal(started.ready, true, JSON.stringify(started));
+    const editor = page.locator('[contenteditable], textarea');
+    const inserted = await editor.evaluate(node => node.tagName === 'TEXTAREA' ? node.value : node.innerHTML);
+    await editor.evaluate(node => { if (node.tagName === 'TEXTAREA') node.value += 'Changed'; else node.append(document.createTextNode('Changed')); });
+    assert.match((await run('send')).error, /draft changed/);
+    await editor.evaluate((node, inserted) => { if (node.tagName === 'TEXTAREA') node.value = inserted; else node.innerHTML = inserted; }, inserted);
     await page.locator('button').evaluate(button => { button.onclick = () => { globalThis.sent++; }; });
     assert.equal((await run('send')).sent, true);
     assert.match((await run('send')).error, /already sent/);
