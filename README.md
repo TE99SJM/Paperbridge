@@ -95,7 +95,9 @@ Provider policies, model access, limits, and billing still apply. ChatGPT and AP
 
 Detection is conservative but not a guarantee that every sensitive question will be recognized. Always inspect the labels, proposed values, and target page yourself, especially non-English forms, reordered entries, unusual custom widgets, or scripts that change a form after scanning.
 
-The sidebar is the primary workspace on browsers exposing Chromium’s Side Panel API; unsupported browsers fall back to a narrow workspace window. Existing-chat mode remains a user-mediated copy/paste bridge and does not read ChatGPT history. Direct API and the optional ChatGPT account helper are separate integrated options.\n\nThe UI preview uses fictional in-memory data and simulated fills. It cannot access application tabs, sign in, or call AI providers; use the installed extension for real work and never enter secrets in the preview.
+The sidebar is the primary workspace on browsers exposing Chromium’s Side Panel API; unsupported browsers fall back to a narrow workspace window. Existing-chat mode remains a user-mediated copy/paste bridge and does not read ChatGPT history. Direct API and the optional ChatGPT account helper are separate integrated options.
+
+The UI preview uses fictional in-memory data and simulated fills. It cannot access application tabs, sign in, or call AI providers; use the installed extension for real work and never enter secrets in the preview.
 
 ## Build from source
 
