@@ -1,19 +1,44 @@
+## Automatic ChatGPT filling
+
+## v1.0.2 docked workspace (unreleased)
+
+- **Opera GX:** the toolbar icon toggles an in-page dock on the selected form. This is a DOM-based dock, not Opera's native sidebar. It reserves up to 420px beside the page and restores the previous margin when closed. Some sites' fixed layouts or frame CSP may obstruct it; no separate-window fallback is used. Browser settings, stores and protected pages cannot host the dock; the icon shows `!` with an explanatory tooltip.
+- **Chromium:** browsers exposing `chrome.sidePanel.open` use a native window-level side panel. Chrome 120+ is the build target. Browsers without that API use the explicit in-page dock. Opera is deliberately routed to the dock rather than assuming Chromium API compatibility.
+- **Why this approach:** [Chrome Side Panel API](https://developer.chrome.com/docs/extensions/reference/api/sidePanel) documents toolbar/user-gesture opening (Chrome 116+). [Opera sidebarAction](https://help.opera.com/en/extensions/sidebar-action-api/) documents `sidebar_action`/`opr.sidebarAction`, an MV2 example, setters and focus events, but no programmatic `open` method. Those documents do not establish current GX MV3 compatibility. The dock uses [programmatic content scripts and DOM](https://developer.chrome.com/docs/extensions/develop/concepts/content-scripts) plus an extension-origin iframe. Native Opera sidebar support is not claimed.
+- **Pinned application:** tab activation never changes the application. Clicking Paperbridge on another ordinary form explicitly changes it and cancels the previous run. Clicking on ChatGPT never replaces it. In Opera, switch back to the original form to see its dock; the automatic run can continue while ChatGPT is visible.
+- **Close/cancel:** runs belong to the panel, not the background worker. Closing/removing the dock, native panel closure/hiding, changing the application, or Cancel revokes the write connection. The scanner checks it before each field and again before a delayed custom-dropdown choice. No run resumes on reopening. An input operation already executing can finish; previously written fields remain. A sent AI prompt cannot be recalled. Undo remains available on reopening while the same form document is alive and access is still granted. Reloading/navigating the form loses in-memory undo. Closing a native panel currently stops all Paperbridge panel write connections across windows, conservatively.
+- **Storage:** encrypted vault format and storage key are unchanged. Wait for “Encrypted locally” before closing, and keep an encrypted backup. Document import, saved answers, overwrite protection, cancellation and undo retain their existing rules. Forms are never submitted and Next is never clicked.
+
+### Update without losing your vault
+
+1. In your existing Paperbridge installation, unlock it and choose **Encrypted backup**. Keep the JSON and your passphrase. The backup control is now visible at dock widths too.
+2. Extract `Paperbridge-Local-Install-v1.0.2.zip` somewhere temporary. Copy its contents **over the files in the exact folder your installed extension already uses**. Keep that folder path unchanged.
+3. At `opera://extensions` (or `chrome://extensions`), click **Reload** on the existing Paperbridge card. **Do not Remove it or load a second copy from a different folder.** Verify the extension ID stays the same. A changed ID/path uses separate browser storage; restore the encrypted backup if necessary.
+4. Reload the form tab to clear old injected scripts. Click the toolbar icon on the form, unlock with your existing passphrase, and choose your signed-in ChatGPT tab under **Fill automatically with ChatGPT**. Check the form yourself; advance and submit manually.
+
+No release is published for 1.0.2. Use the attached built ZIP or verified draft-PR CI artifacts. GitHub's automatic source ZIP is not a ready-built installation.
+
+
+Open your application and ChatGPT conversation in separate tabs. Click Paperbridge on the application, unlock, then choose **Fill automatically with ChatGPT**. Allow ChatGPT access, select the conversation, and start. Keep both tabs open. Supported empty fields fill from the new reply and saved user answers, without approving each answer. Review the website and submit it yourself. Missing facts and unsupported controls stay unchanged. This experimental website bridge requires no API key or helper and has not been validated in a real signed-in ChatGPT session.
+
+The instructions below describe the optional manual workflow.
+
 # Paperbridge for Opera GX: Start here
 
 Paperbridge fills application webpages after you review and approve the answers. Keep using the resume and background already in your AI conversation; you do not need to upload them again into the extension.
 
 ## Install the ready-built extension
 
-1. Download `Paperbridge-Local-Install-v0.0.1.zip` from the [Build and test workflow](https://github.com/TE99SJM/Paperbridge/actions/workflows/ci.yml). Extract it into a permanent folder, such as your Documents folder; do not run it from inside the ZIP.
+1. Download `Paperbridge-Local-Install-v1.0.2.zip` from the [Build and test workflow](https://github.com/TE99SJM/Paperbridge/actions/workflows/ci.yml). Extract it into a permanent folder, such as your Documents folder; do not run it from inside the ZIP.
 2. In Opera GX, enter `opera://extensions` in the address bar.
 3. Enable **Developer mode**, choose **Load unpacked**, and select the extracted folder with `manifest.json` directly inside it. Select the folder, not the ZIP or an individual file; these are Opera's documented unpacked-extension installation steps ([Opera Help](https://help.opera.com/en/extensions/testing/)).
 4. Pin Paperbridge's icon in the browser's extensions menu if you want easy access. Leave the extracted folder in place after installation.
-5. Open an ordinary application webpage and click the Paperbridge toolbar icon. Its separate workspace window will open.
+5. Open an ordinary application webpage and click the Paperbridge toolbar icon. Its docked workspace will open beside the form.
 6. Create a local vault passphrase of at least 12 characters. This is not your AI password, and there is no forgotten-passphrase recovery.
 
 The personal-install release is already built. You do not need Node.js, npm, an API key, or the optional helper for the existing-chat workflow.
 
-If you downloaded the full `Paperbridge-Opera-GX-v0.0.1.zip` instead, select its inner `extension` folder, not the outer project folder. GitHub's automatic source ZIP and Git clones require a build first; see [Build from source](README.md#build-from-source).
+If you downloaded the full `Paperbridge-Opera-GX-v1.0.2.zip` instead, select its inner `extension` folder, not the outer project folder. GitHub's automatic source ZIP and Git clones require a build first; see [Build from source](README.md#build-from-source).
 
 ## Use the AI conversation you already have
 

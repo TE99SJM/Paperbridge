@@ -4,6 +4,7 @@ import { QUESTION_TEMPLATES, normalizeQuestion } from "./answers.js";
 import { createVaultKey, sealVault, openVault } from "./vault.js";
 import { extractDocument } from "./documents.js";
 import { callProvider, listModels } from "./providers.js";
+import { exchangeWithChat, automaticRows } from "./chat-bridge.js";
 import { demoVault, demoScan, demoAnswer } from "./demo.js";
 
 const icons = { FileText, FolderOpen, ScanLine, ListChecks, SlidersHorizontal, LockKeyhole, ShieldCheck, Upload, Plus, Eye, Trash2, ArrowRight, ArrowUpRight, ChevronRight, Check, CheckCheck, CircleHelp, Globe, RefreshCw, Undo2, ExternalLink, Copy, X, KeyRound, Laptop, MessageSquare, Link, LogOut, Download, SquarePen, CircleAlert, CheckCircle2, PanelLeftClose };
@@ -16,6 +17,34 @@ let modelChoices = [], helperInfo = null, replyText = "", results = [], undoCoun
 let busy = false, busyText = "", controller = null, saving = false, saveError = false, pendingSave = false, saveJobs = 0;
 let saveQueue = Promise.resolve(), saveTimer, toastTimer;
 let renderedView = null;
+let panelPort = null, panelClosed = false, nativePanelDocument = false;
+let panelToken = crypto.randomUUID();
+function renewLease() {
+  panelPort?.disconnect();
+  panelToken = crypto.randomUUID();
+  panelPort = chrome.runtime.connect({ name: `panel:${panelToken}` });
+  const port = panelPort;
+  port.onDisconnect.addListener(() => { if (panelPort === port) stopPanel(); });
+}
+
+function stopPanel() {
+  panelClosed = true;
+  controller?.abort();
+  panelPort?.disconnect(); panelPort = null;
+}
+window.addEventListener('pagehide', stopPanel);
+setInterval(() => { if (panelPort && !panelClosed) { try { panelPort.postMessage({type:'keepalive'}); } catch { stopPanel(); } } }, 10000);
+document.addEventListener('visibilitychange', () => {
+  // A docked iframe becomes hidden when its form tab is backgrounded: keep its run alive.
+  // A native panel's own hidden document is no longer an active workspace.
+  if (isExtension && nativePanelDocument) {
+    if (document.hidden) stopPanel();
+    else if (panelClosed) {
+      panelClosed = false; vault = null; keyInfo = null; resetPage(); renewLease(); render();
+    }
+  }
+});
+
 let lastActivity = Date.now();
 const e = value => String(value ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
 const ico = name => `<i data-lucide="${name}" aria-hidden="true"></i>`;
@@ -85,6 +114,7 @@ function progress(message) {
 }
 function resetPage() {
   controller?.abort();
+  if (isExtension && !panelClosed) renewLease();
   scan = null; invalidateDraft(); undoCount = 0; results = [];
 }
 async function getTarget() {
@@ -99,18 +129,21 @@ async function engine(method, payload) {
     if (method === "undo") return { results: results.filter(r => r.ok).map(r => ({ ...r })) };
     return true;
   }
+  if (panelClosed) throw new Error("Panel closed. Reopen Paperbridge to continue.");
+  const operationTarget = { ...target };
   if (!target?.tabId) throw new Error("Open an ordinary application webpage, then click the Paperbridge toolbar icon on that page.");
   let tab;
   try { tab = await chrome.tabs.get(target.tabId); } catch { throw new Error("The application tab was closed. Reopen the page and click the toolbar icon."); }
   if (!tab.url || new URL(tab.url).origin !== target.origin) throw new Error("The page changed sites or the permission expired. Click Paperbridge on the application page again.");
   try {
     await chrome.scripting.executeScript({ target: { tabId: target.tabId }, files: ["scanner.js"] });
+    if (panelClosed || controller?.signal.aborted || target?.tabId !== operationTarget.tabId) throw new Error("Run stopped or target changed.");
     const response = await chrome.scripting.executeScript({
       target: { tabId: target.tabId },
-      func: (action, data) => {
-        if (!["scan", "fill", "undo", "locate"].includes(action) || !globalThis.__paperbridgeEngine) throw new Error("Page engine unavailable.");
-        return globalThis.__paperbridgeEngine[action](data);
-      }, args: [method, payload ?? null]
+      func: (action, data, token) => {
+        if (!["scan", "fill", "undo", "locate", "status"].includes(action) || !globalThis.__paperbridgeEngine) throw new Error("Page engine unavailable.");
+        return globalThis.__paperbridgeEngine[action](action === "locate" ? data : { ...data, panelToken: token });
+      }, args: [method, payload ?? null, panelToken]
     });
     if (!response?.[0]?.result) throw new Error("The page did not respond. Rescan it.");
     return response[0].result;
@@ -227,6 +260,49 @@ function draft() {
     }
   });
 }
+async function automaticFill() {
+  if (preview) throw new Error("Install the extension to use the ChatGPT tab bridge.");
+  const allowed = await chrome.permissions.request({ origins: ["https://chatgpt.com/*"] });
+  if (!allowed) throw new Error("ChatGPT tab access is required for automatic filling.");
+  const tabs = (await chrome.tabs.query({ url: "https://chatgpt.com/*" })).filter(t => t.id !== target?.tabId);
+  if (!tabs.length) throw new Error("Open ChatGPT in another tab, sign in, then try again.");
+  const originalTarget = { ...target };
+  modal("Fill automatically with ChatGPT", `
+    <p>Send the visible form fields and selected background to the conversation you choose. Paperbridge will read its new reply and immediately fill supported empty fields. No per-answer approval is needed.</p>
+    <label class="field-label" for="bridge-tab">ChatGPT conversation</label>
+    <select id="bridge-tab" name="chatTab">${tabs.map(t => `<option value="${t.id}">${e(t.title || t.url)}</option>`).join("")}</select>
+    <p>Use the conversation containing your background, or select documents on the Background page. Missing facts, unsupported fields, and unsupplied eligibility answers stay blank. Existing values and edits are preserved.</p>
+    <div class="notice warn">Review the completed form yourself. Websites may autosave field changes. Paperbridge never clicks Submit or Next. Cancel stops this workflow but cannot recall a message already sent to ChatGPT.</div>
+  `, "Start automatic fill", async form => {
+    const tabId = Number(form.elements.chatTab.value);
+    dialog.close();
+    await task(async signal => {
+      scan = null; invalidateDraft(); undoCount = 0; results = [];
+      signal.throwIfAborted();
+      scan = await engine("scan", { inspectDropdowns: false });
+      const currentScan = scan;
+      const context = { documents: structuredClone(vault.documents), notes: vault.notes };
+      let rows = applySavedAnswers(scan, vault);
+      if (scan.fields.some(f => !f.blockedReason && !f.userAnswerOnly && !f.filled)) {
+        const request = buildPrompt(scan, context, { useChatContext: true });
+        prepared = request; answerContext = context;
+        progress("Sending form fields to your selected ChatGPT tab…");
+        const text = await exchangeWithChat(tabId, request.prompt, scan.scanId, signal);
+        rows = applySavedAnswers(currentScan, vault, reviewAnswers(text, currentScan, context));
+      }
+      signal.throwIfAborted();
+      if (!vault || scan !== currentScan || target?.tabId !== originalTarget.tabId || target?.origin !== originalTarget.origin) throw new Error("The application or workspace changed. Nothing was filled.");
+      answers = rows;
+      progress("Filling the application fields…");
+      const selected = automaticRows(scan, rows);
+      const reply = await engine("fill", { scanId: scan.scanId, overwrite: false, answers: selected });
+      results = reply.results; undoCount = reply.undoCount; view = "review";
+      const done = results.filter(r => r.ok).length;
+      notify(`${done} fields filled; ${scan.fields.length - done} left unchanged. Review the form. Nothing was submitted.`);
+    }, "Scanning the application…", true);
+  });
+}
+
 function fillApproved() {
   const selected = approvedRows();
   if (!selected.length) { notify("Select at least one valid answer to approve it.", true); return; }
@@ -315,17 +391,17 @@ function documentsHTML() {
     <div class="card note-card"><div class="row spread"><h3 style="margin:0">A little extra context</h3><span class="badge neutral">Optional</span></div><label class="screen-reader" for="personal-notes">Personal notes for the AI</label><textarea id="personal-notes" maxlength="20000" placeholder="Add facts you want the AI to know: a preferred name, availability, or why this role interests you. Do not include passwords or identity numbers.">${e(vault.notes)}</textarea><small>These notes are included with selected documents. Changes save encrypted locally.</small></div>
   </section><aside class="side-info"><div class="info-panel"><div class="eyebrow">A BETTER WAY TO APPLY</div><h2>Your experience,<br>not a blank page.</h2><p>A simple path from your documents to a reviewed application.</p><ol class="steps"><li><span class="step-index">1</span><div><strong>Bring your background</strong><span>Upload and check the text your AI will read.</span></div></li><li><span class="step-index">2</span><div><strong>Let your AI make a first draft</strong><span>Scan the form and approve what gets sent.</span></div></li><li><span class="step-index">3</span><div><strong>Make every answer yours</strong><span>Edit, approve, and fill. Submit it yourself.</span></div></li></ol></div>
     <div><div class="privacy-note">${ico("shield-check")}<p>Documents and keys are encrypted in the installed extension. Your vault passphrase never goes to an AI provider.</p></div><div class="privacy-note" style="padding-top:4px">${ico("circle-alert")}<p>Scanned images need OCR first. Always inspect extracted text, especially dates, columns, and tables.</p></div></div></aside></div>
-  <div class="bottom-strip"><div><strong style="font-size:12px">Ready for the next step?</strong><p class="small-text" style="margin:3px 0 0">${preview ? "Try the workflow with a fictional application." : "Open a form and click the Paperbridge toolbar icon to select that page."}</p></div><button class="primary" data-action="scan">${preview ? "Scan sample application" : "Scan application page"}${ico("arrow-right")}</button></div>`;
+  <div class="bottom-strip"><div><strong style="font-size:12px">Ready for the next step?</strong><p class="small-text" style="margin:3px 0 0">${preview ? "Try the workflow with a fictional application." : "Open a form and click the Paperbridge toolbar icon to select that page."}</p></div><button class="primary" data-action="auto-fill">Fill automatically with ChatGPT</button><button data-action="scan">${preview ? "Scan sample application" : "Scan application page"}${ico("arrow-right")}</button></div>`;
 }
 function pageHTML() {
   if (!scan) return `<div class="page-heading"><div><div class="eyebrow">START WITH THE RIGHT PAGE</div><h1>Read the form first.</h1><p>Paperbridge only reads the page you select with its toolbar icon. It does not monitor your browsing.</p></div></div>
     ${target ? `<div class="site-bar"><span class="site-icon">${ico("globe")}</span><div><strong>${e(target.title)}</strong><p>${e(target.origin)}</p></div></div>` : ""}
-    <div class="empty">${ico("scan-line")}<h2>${preview ? "A sample application is ready." : target ? "Ready to scan this page." : "Choose an application page."}</h2><p>${preview ? "Scan the fictional form to try contact, employment, education, and eligibility questions. This demo never reads your real browser tabs." : "Open the form in a normal browser tab, then click the Paperbridge extension icon. Expand the section you want to fill and scan its visible fields."}</p><button class="primary" data-action="scan">${ico("scan-line")}${preview ? "Scan sample application" : "Scan visible fields"}</button></div>
+    <div class="empty">${ico("scan-line")}<h2>${preview ? "A sample application is ready." : target ? "Ready to scan this page." : "Choose an application page."}</h2><p>${preview ? "Scan the fictional form to try contact, employment, education, and eligibility questions. This demo never reads your real browser tabs." : "Open the form in a normal browser tab, then click the Paperbridge extension icon. Expand the section you want to fill and scan its visible fields."}</p><button class="primary" data-action="auto-fill">Fill automatically with ChatGPT</button><button data-action="scan">${ico("scan-line")}${preview ? "Scan sample application" : "Scan visible fields"}</button></div>
     <div class="workflow-note"><h3>Use the background already in your chat.</h3><p>Scan this page, copy its prompt into your existing AI conversation, and bring the JSON reply back. Review and approve the answers, then fill. You do not need to upload the same documents here.</p><div class="row wrap"><button class="small" data-view="connection">Choose AI connection</button><button class="small ghost" data-view="saved">Add your saved answers</button></div></div>`;
   const supported = scan.fields.filter(f => !f.blockedReason).length;
   const draftable = scan.fields.filter(f => !f.blockedReason && !f.userAnswerOnly).length;
   const custom = scan.fields.some(f => f.kind === "custom-select" && !f.blockedReason);
-  return `<div class="page-heading"><div><div class="eyebrow">KNOW WHAT WILL BE FILLED</div><h1>Your application, mapped.</h1><p>Check the detected fields before sending anything to your AI. Existing field values are not included in the prompt.</p></div><button class="small" data-action="scan">${ico("refresh-cw")}Rescan page</button></div>
+  return `<div class="page-heading"><div><div class="eyebrow">KNOW WHAT WILL BE FILLED</div><h1>Your application, mapped.</h1><p>Check the detected fields before sending anything to your AI. Existing field values are not included in the prompt.</p></div><div class="row wrap"><button class="primary" data-action="auto-fill">Fill automatically with ChatGPT</button><button class="small" data-action="scan">${ico("refresh-cw")}Rescan page</button></div></div>
   <div class="site-bar"><span class="site-icon">${ico("globe")}</span><div style="flex:1"><strong>${e(scan.title)}</strong><p>${e(scan.origin)}${e(scan.path)}</p></div><button class="ghost icon-only" data-action="focus-page" aria-label="Return to application page">${ico("arrow-up-right")}</button></div>
   <div class="metrics"><div class="metric"><b>${draftable}</b><span>AI-draftable</span></div><div class="metric"><b>${supported - draftable}</b><span>your own answers</span></div><div class="metric"><b>${scan.fields.length - supported}</b><span>manual-only</span></div></div>
   ${custom ? `<div class="notice"><div class="row spread wrap"><div>Custom dropdowns detected. Read their choices before drafting, or enter an exact option label during review.</div><button class="small" data-action="inspect-dropdowns">Read dropdown choices</button></div></div>` : ""}
@@ -422,13 +498,13 @@ function connectionHTML() {
     <div class="field-group"><label class="field-label" for="api-model">Model ID</label><input id="api-model" data-setting="model" list="available-models" value="${e(s.model)}" placeholder="Load models or enter an exact model ID"><datalist id="available-models">${modelChoices.map(m => `<option value="${e(m.id)}">${e(m.name)}</option>`).join("")}</datalist><small>Use a text/chat model that follows JSON instructions.</small></div>
     <div class="row wrap"><button class="primary small" data-action="load-models" ${preview ? "disabled" : ""}>${ico("refresh-cw")}Allow host & load models</button><button class="small" data-action="save-settings">${ico("check")}Save settings</button></div>
     </div><aside class="connection-help"><h3>Pick the AI that suits you.</h3><p>Presets cover OpenAI, Claude, Gemini, OpenRouter, and local Ollama. Custom endpoints use the OpenAI chat-completions format.</p><div class="notice warn">Only trust endpoints you control or recognize. Your API key and selected document text go to the configured host. Changing providers or the base URL clears the old key.</div><p>For Ollama, run the server on your computer, pull a model, and enter its exact name. If it rejects the extension origin, configure a narrow <code>OLLAMA_ORIGINS</code> value for this extension, not a wildcard.</p><p>API charges and model availability are set by the provider. ChatGPT website subscriptions and API billing are separate. <a href="https://help.openai.com/en/articles/8156019-how-can-i-move-my-chatgpt-subscription-to-the-api" target="_blank" rel="noreferrer">OpenAI's billing explanation</a>.</p><p>Provider keys are decrypted only while the workspace is unlocked. They never go to the application page.</p></aside></div>`;
-  if (s.mode === "manual") content = `<div class="connection-grid"><div class="card connection-card"><h3>Use a chat login you already have</h3><p class="small-text">This mode needs no API key or helper. You move the prompt and JSON answer between your AI chat and Paperbridge yourself.</p>
+  if (s.mode === "manual") content = `<div class="connection-grid"><div class="card connection-card"><h3>Use a chat login you already have</h3><p class="small-text">No API key or helper is needed. On the Application page, choose Fill automatically with ChatGPT to send the prompt, read the new reply, and fill supported fields. The manual copy-and-paste workflow below is also available.</p>
     <div class="field-group"><label class="field-label" for="chat-site">AI chat website</label><select id="chat-site" data-setting="chatSite">${Object.entries(CHAT_SITES).map(([id, site]) => `<option value="${id}" ${s.chatSite === id ? "selected" : ""}>${site.name}</option>`).join("")}</select></div>
     ${s.chatSite === "other" ? `<div class="field-group"><label class="field-label" for="chat-url">Your AI website URL</label><input id="chat-url" data-setting="customChatUrl" type="url" value="${e(s.customChatUrl)}" placeholder="https://your-ai-website.example"></div>` : ""}
     <label class="check-label" style="margin-bottom:18px"><input type="checkbox" data-setting="useChatContext" ${s.useChatContext ? "checked" : ""}><span>Use the resume and background already in my AI conversation.<br><small>No local document is required. Paste the prompt into that same conversation.</small></span></label>
     <button class="primary small" data-action="open-chat">${ico("external-link")}Open ${e(CHAT_SITES[s.chatSite].name)}</button>
     <div class="divider"></div><h3>The copy-and-paste handoff</h3><ol class="small-text" style="padding-left:18px;line-height:1.9"><li>Scan your application page.</li><li>Review and copy the prepared prompt.</li><li>Paste it into your AI chat and send it yourself.</li><li>Copy the AI's complete JSON reply back into Review answers.</li><li>Validate, edit, approve, and fill.</li></ol></div>
-    <aside class="connection-help"><h3>Your login stays where it belongs.</h3><p>Sign in directly on the provider's real website. Paperbridge does not read chat cookies, capture passwords, scrape conversations, or send messages on your behalf.</p><div class="notice">This is a manual handoff, not one-click AI generation. For integrated drafting, use the ChatGPT helper or an API provider with local background text.</div><p>Your AI can use files already supplied in that same conversation. The extension only sees the reply you paste back and labels earlier-chat evidence as not locally verified.</p><p>Your clipboard is not cleared automatically. Copying a prompt replaces its current contents, so keep that in mind when using shared computers.</p></aside></div>`;
+    <aside class="connection-help"><h3>Your login stays where it belongs.</h3><p>Sign in directly on the provider's real website. Paperbridge does not read chat cookies or capture passwords. Starting an automatic ChatGPT run sends one prompt and reads its new reply in the conversation you select.</p><div class="notice">Automatic ChatGPT filling is available on the Application page. Other AI websites use the manual handoff. Website changes can interrupt the automatic bridge.</div><p>Your AI can use files already supplied in that same conversation. The extension receives the reply you paste back or the new reply from your automatic ChatGPT run; earlier-chat evidence is not locally verified.</p><p>Your clipboard is not cleared automatically. Copying a prompt replaces its current contents, so keep that in mind when using shared computers.</p></aside></div>`;
   return `<div class="page-heading"><div><div class="eyebrow">YOUR AI, YOUR WAY</div><h1>Choose your connection.</h1><p>Use ChatGPT sign-in, bring your own API, or keep your existing chat workflow. Documents stay yours in every mode.</p></div></div>
     ${preview ? `<div class="notice warn">This is an interface preview. Live sign-in and API calls are disabled. Do not enter passwords, pairing codes, or API keys here.</div>` : ""}
     <div class="mode-options">${modes.map(([id, icon, name, description]) => `<button class="mode-option ${s.mode === id ? "active" : ""}" data-mode="${id}" aria-pressed="${s.mode === id}">${ico(icon)}<strong>${name}</strong><span>${description}</span></button>`).join("")}</div>${content}`;
@@ -439,7 +515,7 @@ function render() {
     const titles = { documents: "Optional background", page: "Application page", review: "Review answers", saved: "Saved answers", connection: "AI connection" };
     app.innerHTML = `<div class="shell">${navigationHTML()}<div class="workspace">
       ${preview ? `<div class="preview-banner">INTERACTIVE PREVIEW · Fictional sample data. No AI connection and no access to your browser tabs.</div>` : ""}
-      <header class="topbar"><div class="breadcrumb">Private workspace ${ico("chevron-right")}<strong>${titles[view]}</strong></div><div class="row"><span class="vault-state">${ico("lock-keyhole")}<span id="save-state">${preview ? "Demo · memory only" : saveError ? "Not saved" : saving ? "Encrypting changes…" : "Encrypted locally"}</span></span><button class="ghost icon-only small" data-action="${preview ? "help" : "lock"}" aria-label="${preview ? "Quick guide" : "Lock workspace"}">${ico(preview ? "circle-help" : "lock-keyhole")}</button></div></header>
+      <header class="topbar">${undoCount ? `<button class="small" data-action="undo">Undo last fill (${undoCount})</button>` : ""}<div class="breadcrumb">Private workspace ${ico("chevron-right")}<strong>${titles[view]}</strong></div><div class="row"><span class="vault-state">${ico("lock-keyhole")}<span id="save-state">${preview ? "Demo · memory only" : saveError ? "Not saved" : saving ? "Encrypting changes…" : "Encrypted locally"}</span></span><button class="ghost icon-only small" data-action="${preview ? "help" : "lock"}" aria-label="${preview ? "Quick guide" : "Lock workspace"}">${ico(preview ? "circle-help" : "lock-keyhole")}</button></div></header>
       ${busy ? `<div class="busy-bar" role="status"><span><span class="busy-dot"></span><span id="busy-text">${e(busyText)}</span></span>${controller ? '<button class="small" data-action="cancel">Cancel request</button>' : ""}</div>` : ""}
       <main class="content ${busy ? "busy-content" : ""}" id="main-content" tabindex="-1" ${busy ? 'aria-busy="true" inert' : ""}>${view === "documents" ? documentsHTML() : view === "page" ? pageHTML() : view === "review" ? reviewHTML() : view === "saved" ? savedHTML() : connectionHTML()}</main></div></div>`;
     if (busy) app.querySelectorAll(".nav-item").forEach(el => { el.disabled = true; });
@@ -532,7 +608,9 @@ app.addEventListener("submit", async ev => {
       vault.settings = { ...DEFAULT_SETTINGS, ...vault.settings };
       vault.savedAnswers ||= [];
     } else { keyInfo = await createVaultKey(password); vault = newVault(); await persist(); }
-    await getTarget(); lastActivity = Date.now(); view = "page";
+    await getTarget();
+    if (target && !preview) { try { undoCount = (await engine("status")).undoCount; } catch { /* permission may need a new toolbar gesture */ } }
+    lastActivity = Date.now(); view = "page";
   } catch (err) { vault = null; keyInfo = null; notify(friendlyError(err), true); }
   finally { busy = false; render(); }
 });
@@ -628,13 +706,14 @@ app.addEventListener("click", async ev => {
     if (el.dataset.locate) { await engine("locate", el.dataset.locate); await focusTarget(); if (preview) notify("In the installed extension, this highlights the field on the actual application."); return; }
     switch (el.dataset.action) {
       case "lock": await lock(); break;
+      case "auto-fill": await automaticFill(); break;
       case "scan": await scanPage(); break;
       case "inspect-dropdowns":
         modal("Read the dropdown choices?", `<p>This opens and closes recognized dropdown menus on the selected page to read their labels. It does not intentionally select an option or advance the application.</p><p>This creates a fresh scan and clears the old draft and undo history. If a website changes a value when its menu opens, review it manually.</p>`, "Read choices & rescan", async () => { dialog.close(); await scanPage(true); }); break;
       case "add-saved": editSaved(); break;
       case "focus-page": await focusTarget(); break;
       case "draft": draft(); break;
-      case "cancel": controller?.abort(); break;
+      case "cancel": controller?.abort(); renewLease(); break;
       case "help": help(); break;
       case "backup": await downloadBackup(); break;
       case "import-backup": document.getElementById("backup-file").click(); break;
@@ -715,11 +794,18 @@ document.addEventListener("pointerdown", () => { lastActivity = Date.now(); }, {
 document.addEventListener("keydown", () => { lastActivity = Date.now(); }, { passive: true });
 setInterval(() => { if (vault && !preview && !busy && !saveError && Date.now() - lastActivity > 10 * 60000) lock(); }, 30000);
 window.addEventListener("beforeunload", ev => {
-  if (saving || pendingSave || busy) { ev.preventDefault(); ev.returnValue = ""; }
+  if (saving || pendingSave) { ev.preventDefault(); ev.returnValue = ""; }
 });
 async function start() {
+  if (isExtension && window.top === window) nativePanelDocument = !await chrome.tabs.getCurrent();
+  if (isExtension && window.top !== window) {
+    const token = new URL(location.href).searchParams.get('dock');
+    if (!token || !await chrome.runtime.sendMessage({ type: 'dock-authorize', token })) throw new Error('Unauthorized embedded workspace. Open Paperbridge using its toolbar icon.');
+  }
   if (preview) vault = demoVault();
   else {
+    // Extension UI owns the run. The scanner checks this live connection before each write.
+    renewLease();
     const stored = await chrome.storage.local.get("paperbridgeVault");
     storedBlob = stored.paperbridgeVault || null;
     await getTarget();

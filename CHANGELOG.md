@@ -2,11 +2,20 @@
 
 This file records user-visible changes to Paperbridge. Release archives include their own checksums; documentation-only repackaging can change an archive hash without changing the runtime version.
 
-## Version renumbering · 2026-10-29
+## v1.0.2 · 2026-10-29 (unreleased)
 
-- Set this code line’s internal version to `0.0.1`.
-- Renumber the baseline as `0.0.1`, dual-tab update as `0.0.2`, and planned sidebar update as `0.0.3`.
-- Generated package names, workspace version, manifest, helper, and documentation follow the new numbering. Historical published downloads keep their existing names until separately replaced.
+- Replace the separate popup window with a native Chromium side panel or explicit Opera GX in-page dock; no window fallback.
+- Preserve all fixes through latest 1.0.1 commit d1ad47c and its automatic dual-tab workflow; keep ChatGPT from becoming the target.
+- Add revocable panel write leases, narrow-width navigation and backup controls, and reopening access to last-fill undo.
+- Update workspace, manifest, package and helper identifiers, packaging assertions and installation instructions.
+- Keep encrypted vault format and existing-value safeguards unchanged. Never submit or click Next.
+- This branch is for testing; no release is published.
+
+## v0.0.2 (formerly v1.0.1) · 2026-10-29
+
+- Add the experimental automatic ChatGPT dual-tab filling workflow, without form submission.
+- Update extension, workspace, package, and helper version identifiers to 0.0.2.
+- This branch is for testing; no 0.0.2 release has been published.
 
 ## v0.0.1 · 2026-10-29
 

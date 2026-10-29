@@ -10,7 +10,7 @@ Paperbridge is review-first automation, not a security boundary against a malici
 | `scripting` | Inject the local scanner/filler into that selected tab's isolated world. |
 | `storage` | Store the encrypted vault and temporary target metadata. |
 | `clipboardWrite` | Copy a prompt after explicit confirmation. |
-| Optional HTTPS/loopback hosts | Reach a provider endpoint or local helper only after you request and allow that host. |
+| Optional HTTPS/loopback hosts | Reach a provider endpoint/local helper, or access the explicitly selected ChatGPT tab after you allow that host. |
 
 The release has no always-on `host_permissions`, no permanent content script, no `externally_connectable` interface, and no cookies/history permissions. Optional host patterns are broad enough to support user-selected providers, but actual requests are host-scoped and need approval; Chromium host grants are not port-scoped.
 
@@ -18,7 +18,8 @@ The workspace uses bundled local scripts and fonts with `script-src 'self'`. AI 
 
 ## Fill safeguards
 
-- **Review boundary:** All model and saved answers begin unapproved. Editing revokes approval, and filling requires a separate target-site/autosave confirmation.
+- **Automatic bridge:** Starting a run authorizes sending its form/background to the chosen ChatGPT conversation and filling supported empty fields without per-answer approval. Replies must match the current scan and pass normal field validation. Chat-context quotations remain unverified locally. Missing or unsupported answers are skipped.
+- **Manual review boundary:** All model and saved answers begin unapproved. Editing revokes approval, and filling requires a separate target-site/autosave confirmation.
 - **Field identity:** A fill checks the scan ID, document URL, original element identity, labels, type, section, constraints, supported options, and whether the field changed since scanning.
 - **No silent overwrites:** Existing values are skipped by default. The optional overwrite switch only applies to values present at scan time; post-scan edits are still preserved.
 - **Sensitive questions:** Detected sensitive fields remain manual. Supported eligibility and employer-contact answers require user-originated values and explicit confirmation rather than AI inference.
@@ -60,3 +61,7 @@ This release has not received an independent security audit. Test on actual Oper
 Report potential security vulnerabilities through [GitHub's private vulnerability reporting for Paperbridge](https://github.com/TE99SJM/Paperbridge/security/advisories/new), not a public issue. Include the version, affected component, impact, and a minimal fictional reproduction; do not include live credentials or personal documents.
 
 For ordinary bugs, use the repository's issue form and remove identifying information first. Never attach an unredacted application screenshot, resume, encrypted vault plus passphrase, API key, pairing code, or helper session file.
+
+## v1.0.2 dock boundary
+
+The Opera dock embeds a web-accessible extension page inside a closed shadow root. Before displaying the vault UI it validates a random background-issued token bound to the containing tab. Arbitrary website frames cannot unlock the UI. The page can remove or obstruct the dock; that revokes its runtime connection and stops further field writes. This does not protect against a compromised browser, another privileged extension, or a deliberately deceptive host page. Never enter the vault passphrase into a website field. Only index.html is directly web accessible; its scripts and assets load as extension-origin subresources.

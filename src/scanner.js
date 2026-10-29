@@ -239,7 +239,7 @@ if (!globalThis.__paperbridgeEngine) {
       if (readValue(entry) !== before) throw new Error("The website changed a value while opening the menu. Review it and rescan.");
     }
   }
-  async function chooseDropdown(entry, value, restoring = false) {
+  async function chooseDropdown(entry, value, restoring = false, panelToken = null) {
     const list = await openDropdown(entry);
     const wanted = restoring && value === "" ? entry.emptyLabel : String(value);
     const matches = optionRows(list).filter(row => normalizeChoice(row.label) === normalizeChoice(wanted));
@@ -252,6 +252,7 @@ if (!globalThis.__paperbridgeEngine) {
       await closeDropdown(entry, list);
       throw new Error("The option has an unsafe button type. Choose it manually.");
     }
+    if (panelToken && !await chrome.runtime.sendMessage({ type: 'panel-lease', token: panelToken }).catch(() => false)) throw new Error("Panel closed or run cancelled.");
     choice.target.click();
     await waitFor(() => {
       if (!entry.node.isConnected) throw new Error("The website replaced this control. Check its selection and rescan.");
@@ -321,6 +322,7 @@ if (!globalThis.__paperbridgeEngine) {
     }
     const results = [], undo = [];
     for (const row of payload.answers) {
+      if (payload.panelToken && !await chrome.runtime.sendMessage({ type: 'panel-lease', token: payload.panelToken }).catch(() => false)) break;
       const entry = state.entries.get(row.fieldId);
       try {
         assertFresh(entry);
@@ -331,7 +333,7 @@ if (!globalThis.__paperbridgeEngine) {
         const checked = validateFieldValue(entry.field, row.value);
         if (checked.error) throw new Error(checked.error);
         let handledEvents = false;
-        if (entry.field.kind === "custom-select") { await chooseDropdown(entry, checked.value); handledEvents = true; }
+        if (entry.field.kind === "custom-select") { await chooseDropdown(entry, checked.value, false, payload.panelToken); handledEvents = true; }
         else if (entry.field.kind === "checkbox") {
           if (entry.node.required && checked.value === false) throw new Error("The website requires this checkbox. Complete it manually.");
           if (entry.node.checked !== checked.value) { entry.node.click(); handledEvents = true; }
@@ -360,15 +362,16 @@ if (!globalThis.__paperbridgeEngine) {
     if (undo.length) undoState = { href: location.href, rows: undo };
     return { results, undoCount: undo.length };
   }
-  async function undo() {
+  async function undo(payload = {}) {
     if (!undoState || undoState.href !== location.href) throw new Error("No undo is available for this page.");
     const results = [];
     for (const row of undoState.rows) {
+      if (payload.panelToken && !await chrome.runtime.sendMessage({ type: 'panel-lease', token: payload.panelToken }).catch(() => false)) break;
       try {
         assertFresh(row.entry);
         if (!equal(readValue(row.entry), row.after)) throw new Error("You or the page changed this answer. It was left untouched.");
         const entry = row.entry;
-        if (entry.field.kind === "custom-select") await chooseDropdown(entry, row.before, true);
+        if (entry.field.kind === "custom-select") await chooseDropdown(entry, row.before, true, payload.panelToken);
         else if (entry.field.kind === "checkbox" && entry.node.checked !== row.before) entry.node.click();
         else if (entry.field.kind === "radio") {
           if (!row.before.length) throw new Error("This radio group originally had no selection. Clear it manually; there is no reliable framework-safe unselect action.");
@@ -393,5 +396,5 @@ if (!globalThis.__paperbridgeEngine) {
     setTimeout(() => { if (entry.node.style.outline === "rgb(237, 101, 92) solid 3px" || entry.node.style.outline.includes("237")) entry.node.style.outline = previous; }, 2200);
     return true;
   }
-  globalThis.__paperbridgeEngine = Object.freeze({ scan, fill, undo, locate });
+  globalThis.__paperbridgeEngine = Object.freeze({ scan, fill, undo, locate, status: () => ({ undoCount: undoState?.href === location.href ? undoState.rows.length : 0 }) });
 }
